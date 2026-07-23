@@ -1,0 +1,37 @@
+/* A truly GENERIC app — ad-hoc, undesigned. Unrelated colors, inconsistent spacing.
+   Should score LOW on discipline and yield a near-empty product system. */
+
+body {
+  color: #333333;
+  background: #f8f9fa;
+  font-family: -apple-system, sans-serif;
+}
+
+.header {
+  padding: 13px 17px;
+  background: #007bff;
+  color: #ffffff;
+}
+
+.card {
+  margin: 22px;
+  padding: 9px 15px;
+  border: 1px solid #cccccc;
+  background: #ffffff;
+}
+
+.tag-ok {
+  color: #28a745;
+  padding: 3px 7px;
+}
+
+.tag-bad {
+  color: #dc3545;
+  padding: 5px 11px;
+}
+
+.note {
+  margin-top: 19px;
+  gap: 6px;
+  color: #6c757d;
+}

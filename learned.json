@@ -1,0 +1,13 @@
+{
+  "disambiguation_rules": [],
+  "role_exemplars": {},
+  "intent_decisions": {},
+  "rationales": {},
+  "moment_rules": [],
+  "promoted_roles": {},
+  "promoted_treatments": {},
+  "promoted_moments": {},
+  "promoted_facets": {},
+  "discarded": {},
+  "moment_corrections": {}
+}

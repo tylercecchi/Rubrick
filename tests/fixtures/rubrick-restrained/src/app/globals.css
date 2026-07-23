@@ -1,0 +1,65 @@
+/* An intentionally RESTRAINED product (Linear-ish). Clean by DISCIPLINE, not expression:
+   a coherent cool-grey ramp, one accent, a strict 4px spacing scale, one type family at a
+   tight scale. No loud moves — its identity is the rigor. Should score HIGH on discipline
+   and be captured via the discipline axis even at low delta-from-generic. */
+
+:root {
+  /* coherent cool-grey ramp — consistent hue, systematic lightness steps */
+  --gray-0: #08090a;
+  --gray-1: #131417;
+  --gray-2: #1c1d21;
+  --gray-3: #26282d;
+  --gray-4: #3a3d44;
+  --gray-5: #6b6f76;
+  --gray-6: #9ca1a8;
+  --gray-7: #d0d3d7;
+  --gray-8: #f4f5f6;
+
+  /* one restrained accent + its steps */
+  --accent: #5e6ad2;
+  --accent-hover: #7c89e8;
+
+  /* strict 4px spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  --font: "Inter", system-ui, sans-serif;
+}
+
+body {
+  color: var(--gray-7);
+  background: var(--gray-0);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.panel {
+  padding: 16px;
+  gap: 12px;
+  border: 1px solid var(--gray-3);
+  background: var(--gray-1);
+  border-radius: 8px;
+}
+
+.row {
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.title {
+  font-size: 21px;
+  font-weight: 590;
+  color: var(--gray-8);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-5);
+}

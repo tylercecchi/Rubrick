@@ -1,0 +1,133 @@
+{
+  "dispositions": {
+    "expressive-accent": {
+      "prior": "a restrained base lets a single bold color carry emotional emphasis, drawing attention to what matters most",
+      "calibrated": {}
+    },
+    "maximize-information-density": {
+      "prior": "Every element should carry meaningful signal, so pack the most relevant information into the least space without sacrificing clarity.",
+      "calibrated": {}
+    }
+  },
+  "surfaces": [],
+  "rules": [],
+  "styles": [
+    {
+      "facet": "color",
+      "identity_moves": [
+        "expressive-accent"
+      ],
+      "because": "expressive-accent",
+      "concrete": {
+        "anchors": [
+          "#5e6ad2",
+          "#7c89e8"
+        ],
+        "moves": {
+          "restrained-neutral-chrome": "9-step gray ramp (--gray-0 #08090a through --gray-8 #f4f5f6) forms nearly all grounds, borders, and text (bg var(--gray-0), border var(--gray-3), color var(--gray-7)/var(--gray-5))",
+          "expressive-accent": "single indigo --accent #5e6ad2 with --accent-hover #7c89e8 as the sole non-neutral color, used sparingly (color: '#5e6ad2')"
+        },
+        "neutral_ramp": [
+          "#08090a",
+          "#131417",
+          "#1c1d21",
+          "#26282d",
+          "#3a3d44",
+          "#6b6f76",
+          "#9ca1a8",
+          "#d0d3d7",
+          "#f4f5f6"
+        ]
+      },
+      "metrics": {
+        "accent_chroma": 116,
+        "palette_coherence": 1.0,
+        "background_tonality": 0.08
+      },
+      "application": [
+        {
+          "kind": "neutral",
+          "role": "ground",
+          "reserved": false,
+          "evidence": "page background uses the darkest neutral --gray-0 (#08090a)"
+        },
+        {
+          "kind": "neutral",
+          "role": "surface",
+          "reserved": false,
+          "evidence": "Panel background --gray-1 (#131417) raises a container off the near-black ground"
+        },
+        {
+          "kind": "neutral",
+          "role": "text",
+          "reserved": false,
+          "evidence": "foreground uses a graded neutral ramp: --gray-8 headings, --gray-7 body, --gray-5/6 muted labels"
+        },
+        {
+          "kind": "neutral",
+          "role": "edge",
+          "reserved": false,
+          "evidence": "borders/dividers use --gray-3 (#26282d) throughout Panel and globals"
+        },
+        {
+          "kind": "accent",
+          "role": "interactive",
+          "reserved": true,
+          "evidence": "the single saturated hue --accent #5e6ad2 (with --accent-hover #7c89e8) is the only non-neutral color, appearing solely as a foreground accent within Panel \u2014 never on ground, surface, or borders"
+        }
+      ]
+    },
+    {
+      "facet": "density",
+      "identity_moves": [
+        "information-dense"
+      ],
+      "because": "maximize-information-density",
+      "concrete": {
+        "anchors": [],
+        "moves": {
+          "information-dense": "detected by code signature"
+        }
+      },
+      "metrics": {
+        "density_spacing_px": 12.0,
+        "spacing_discipline": 1.0,
+        "content_density": 6.0
+      },
+      "application": []
+    }
+  ],
+  "composition": null,
+  "components": [],
+  "subtractions": [
+    {
+      "omits": "elevation-shadow",
+      "note": "deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation)"
+    },
+    {
+      "omits": "single-hue",
+      "note": "SINGLE-HUE \u2014 one accent hue family only, no multi-color palette"
+    },
+    {
+      "omits": "flat-color",
+      "note": "FLAT-COLOR \u2014 solid fills only, no gradients"
+    },
+    {
+      "omits": "single-face",
+      "note": "SINGLE-FACE \u2014 one typeface, no display/body pairing"
+    },
+    {
+      "omits": "ambient-motion",
+      "note": "STATIC \u2014 no ambient / perpetual motion"
+    }
+  ],
+  "_checklist": [
+    "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.",
+    "DENSITY \u2014 carry the moves ['information-dense'].",
+    "SUBTRACTION \u2014 the product is deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation). Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
+    "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
+    "SUBTRACTION \u2014 the product is FLAT-COLOR \u2014 solid fills only, no gradients. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
+    "SUBTRACTION \u2014 the product is SINGLE-FACE \u2014 one typeface, no display/body pairing. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
+    "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."
+  ]
+}

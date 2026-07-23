@@ -1,0 +1,96 @@
+{
+  "dispositions": {
+    "color-as-meaning": {
+      "prior": "Color should encode meaning and status so users interpret state and sentiment instantly, not just decorate the interface.",
+      "calibrated": {}
+    }
+  },
+  "surfaces": [],
+  "rules": [],
+  "styles": [
+    {
+      "facet": "color",
+      "identity_moves": [
+        "semantic-status-color",
+        "sentiment-coding"
+      ],
+      "because": "color-as-meaning",
+      "concrete": {
+        "anchors": [
+          "#007bff",
+          "#28a745",
+          "#dc3545"
+        ],
+        "moves": {
+          "semantic-status-color": "Bootstrap-default green #28a745 and red #dc3545 used as text colors to encode success/error state alongside muted gray #6c757d",
+          "sentiment-coding": "green #28a745 (positive) vs red #dc3545 (negative) text colors map to sentiment"
+        },
+        "neutral_ramp": [
+          "#333333",
+          "#cccccc",
+          "#6c757d"
+        ]
+      },
+      "metrics": {
+        "palette_coherence": 0.0,
+        "background_tonality": 0.98
+      },
+      "application": [
+        {
+          "kind": "neutral",
+          "role": "ground",
+          "reserved": false,
+          "evidence": "page ground #f8f9fa, also used as card background"
+        },
+        {
+          "kind": "neutral",
+          "role": "surface",
+          "reserved": false,
+          "evidence": "Card background #ffffff / #f8f9fa"
+        },
+        {
+          "kind": "neutral",
+          "role": "text",
+          "reserved": false,
+          "evidence": "body text #333333, muted #6c757d"
+        },
+        {
+          "kind": "neutral",
+          "role": "edge",
+          "reserved": false,
+          "evidence": "borders 1px solid #cccccc on cards and globals"
+        },
+        {
+          "kind": "accent",
+          "role": "interactive",
+          "reserved": false,
+          "evidence": "#007bff used as button background and as text color inside Card ad-hoc"
+        },
+        {
+          "kind": "accent",
+          "role": "text",
+          "reserved": false,
+          "evidence": "color:#007bff applied to text in Card.tsx, not confined to controls"
+        },
+        {
+          "kind": "semantic",
+          "role": "data",
+          "reserved": false,
+          "evidence": "#28a745 success, #dc3545 danger used as colors and fills"
+        },
+        {
+          "kind": "semantic",
+          "role": "surface",
+          "reserved": false,
+          "evidence": "#28a745 used as a background fill in Card.tsx, leaking status color into surface"
+        }
+      ]
+    }
+  ],
+  "composition": null,
+  "components": [],
+  "subtractions": [],
+  "_checklist": [
+    "COLOR \u2014 carry the moves ['semantic-status-color', 'sentiment-coding'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is LIGHT (tonality 0.98) \u2014 match that polarity."
+  ]
+}

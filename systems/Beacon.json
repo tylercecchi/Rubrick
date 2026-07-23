@@ -1,0 +1,375 @@
+{
+  "dispositions": {
+    "typography-as-brand-voice": {
+      "prior": "treat type as the primary identity carrier, so distinctive faces and expressive contrast do the branding work themselves",
+      "calibrated": {}
+    },
+    "meaning-first-color": {
+      "prior": "Color should encode meaning and identity rather than decorate, so every hue maps to a concept, state, or accent that communicates intent.",
+      "calibrated": {}
+    },
+    "airy-minimalism": {
+      "prior": "prioritize open space and lightweight layering so content breathes and feels effortless, unconstrained, and premium",
+      "calibrated": {}
+    },
+    "always-alive-presence": {
+      "prior": "An interface should feel perpetually alive and present, signaling ongoing activity through subtle continuous motion rather than appearing static or dormant.",
+      "calibrated": {}
+    },
+    "depth-through-light-not-lines": {
+      "prior": "Convey hierarchy and elevation by simulating how light, shadow, and translucency behave in physical space rather than using explicit borders or dividers.",
+      "calibrated": {}
+    },
+    "tactile-realism": {
+      "prior": "surfaces should evoke physical material presence so interfaces feel believable and touchable",
+      "calibrated": {
+        "light_source": "top",
+        "overlay_alpha_ceiling": 0.5
+      }
+    },
+    "friction-over-freedom": {
+      "prior": "When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+      "calibrated": {}
+    },
+    "information-dense-command-center": {
+      "prior": "Center a primary focus and layer synchronized secondary views around it so users can monitor and act on complex state at a glance.",
+      "calibrated": {}
+    }
+  },
+  "surfaces": [
+    {
+      "applies_to": "focal-entity",
+      "requires": [
+        "bevel",
+        "lighting",
+        "sheen",
+        "texture"
+      ],
+      "because": "tactile-realism"
+    }
+  ],
+  "rules": [
+    {
+      "applies_to": "reveal",
+      "requires": [
+        "demote-not-remove",
+        "interaction-lock",
+        "manufactured-latency",
+        "multi-phase"
+      ],
+      "because": "friction-over-freedom",
+      "exit_ms": null,
+      "enter_ms": null
+    },
+    {
+      "applies_to": "rest",
+      "requires": [
+        "demote-not-remove",
+        "interaction-lock",
+        "manufactured-latency",
+        "multi-phase"
+      ],
+      "because": "friction-over-freedom",
+      "exit_ms": null,
+      "enter_ms": null
+    },
+    {
+      "applies_to": "toggle",
+      "requires": [
+        "demote-not-remove",
+        "interaction-lock",
+        "manufactured-latency",
+        "multi-phase"
+      ],
+      "because": "friction-over-freedom",
+      "exit_ms": null,
+      "enter_ms": null
+    }
+  ],
+  "styles": [
+    {
+      "facet": "typography",
+      "identity_moves": [
+        "custom-display-face",
+        "distinct-body-face",
+        "expressive-weight",
+        "extreme-scale-contrast",
+        "treated-microtype",
+        "type-as-graphic"
+      ],
+      "because": "typography-as-brand-voice",
+      "concrete": {
+        "values": {
+          "faces": {
+            "display": "BeaconGrotesk",
+            "body": "BeaconText",
+            "label": "BeaconMono"
+          }
+        },
+        "anchors": [
+          "BeaconGrotesk",
+          "BeaconText",
+          "BeaconMono"
+        ],
+        "moves": {
+          "custom-display-face": "code signature",
+          "distinct-body-face": "code signature",
+          "expressive-weight": "code signature",
+          "extreme-scale-contrast": "code signature",
+          "treated-microtype": "code signature",
+          "type-as-graphic": "code signature"
+        },
+        "face_roles": {
+          "body": "BeaconText",
+          "display": [
+            "BeaconGrotesk",
+            "BeaconMono"
+          ]
+        }
+      },
+      "metrics": {
+        "scale_contrast_ratio": 15.3,
+        "micro_tracking_em": 0.18,
+        "max_weight": 900
+      },
+      "application": []
+    },
+    {
+      "facet": "color",
+      "identity_moves": [
+        "entity-driven-color",
+        "expressive-accent",
+        "semantic-status-color"
+      ],
+      "because": "meaning-first-color",
+      "concrete": {
+        "anchors": [
+          "#aab4cc",
+          "#6c7690",
+          "#ff4d1f",
+          "#ff7a3d",
+          "#34e0a1",
+          "#ffcf5c",
+          "#ff4d6d",
+          "#4da8ff",
+          "#b07bff"
+        ],
+        "moves": {
+          "entity-driven-color": "--entity-air:#4da8ff and --entity-ground:#b07bff distinguish subject categories (air vs ground); usage 'background: signal.hue' / 'color: signal.hue' binds color to the entity being rendered",
+          "semantic-status-color": "--signal-live:#34e0a1, --signal-warn:#ffcf5c, --signal-crit:#ff4d6d encode operational state, reinforced by .presence beacon-pulse as a 'live presence signal'",
+          "expressive-accent": "--accent:#ff4d1f / --accent-hot:#ff7a3d bold saturated orange as identity, bleeding into elevation: .elev-dramatic uses '0 24px 64px -16px rgba(255,77,31,0.2)'",
+          "restrained-neutral-chrome": "layered near-black neutrals --ground/#080b12 through --surface-2/#1b2233 with muted --text-mid/--text-dim ground the expressive signal/entity hues; comment 'dramatic float \u2014 NEUTRAL ink (hue lives on marking)'"
+        },
+        "neutral_ramp": [
+          "#080b12",
+          "#0d1119",
+          "#131826",
+          "#1b2233",
+          "#232c40"
+        ]
+      },
+      "metrics": {
+        "accent_chroma": 224,
+        "palette_coherence": 0.44,
+        "background_tonality": 0.08
+      },
+      "application": [
+        {
+          "kind": "neutral",
+          "role": "ground",
+          "reserved": false,
+          "evidence": "--ground #080b12 sets body background; dark canvas is the base"
+        },
+        {
+          "kind": "neutral",
+          "role": "surface",
+          "reserved": false,
+          "evidence": "--surface-0/1/2 build cards/panels (BeaconCard, DetailPanel bg var(--surface-2)) via the lit gradient object"
+        },
+        {
+          "kind": "neutral",
+          "role": "text",
+          "reserved": false,
+          "evidence": "--text-hi/mid/dim carry all copy across BeaconCanvas, BeaconCard, DetailPanel"
+        },
+        {
+          "kind": "neutral",
+          "role": "edge",
+          "reserved": false,
+          "evidence": "--edge #232c40 for borders (DetailPanel '1px solid var(--edge)')"
+        },
+        {
+          "kind": "neutral",
+          "role": "decoration",
+          "reserved": false,
+          "evidence": "shadows/bevels are neutral ink \u2014 'dramatic float \u2014 NEUTRAL ink (hue lives on marking)', rgba(0,0,0) elevation, glass rgba(13,17,25)"
+        },
+        {
+          "kind": "accent",
+          "role": "data",
+          "reserved": false,
+          "evidence": "--accent #ff4d1f used as color:var(--accent) to light the focal beacon marking in BeaconCanvas"
+        },
+        {
+          "kind": "accent",
+          "role": "decoration",
+          "reserved": false,
+          "evidence": "elev-dramatic adds a warm glow 0 24px 64px rgba(255,77,31,0.2) \u2014 accent bleeds into elevation atmosphere"
+        },
+        {
+          "kind": "semantic",
+          "role": "data",
+          "reserved": true,
+          "evidence": "signal-live/warn/crit and entity-air/ground only ever appear as signal.hue on beacon dots, badge fills and status labels in BeaconCard/DetailPanel"
+        }
+      ]
+    },
+    {
+      "facet": "density",
+      "identity_moves": [
+        "floating-overlays",
+        "full-bleed-canvas",
+        "generous-hero-space"
+      ],
+      "because": "airy-minimalism",
+      "concrete": {
+        "anchors": [],
+        "moves": {
+          "floating-overlays": "detected by code signature",
+          "full-bleed-canvas": "detected by code signature",
+          "generous-hero-space": "detected by code signature"
+        }
+      },
+      "metrics": {
+        "spacing_discipline": 1.0,
+        "content_density": 16.3
+      },
+      "application": []
+    },
+    {
+      "facet": "ambient",
+      "identity_moves": [
+        "breathing-pulse",
+        "drift-scroll",
+        "perpetual-loop",
+        "presence-signal",
+        "rotation-spin"
+      ],
+      "because": "always-alive-presence",
+      "concrete": {
+        "anchors": [],
+        "moves": {
+          "breathing-pulse": "detected by code signature",
+          "drift-scroll": "detected by code signature",
+          "perpetual-loop": "detected by code signature",
+          "presence-signal": "detected by code signature",
+          "rotation-spin": "detected by code signature"
+        }
+      },
+      "metrics": {},
+      "application": []
+    },
+    {
+      "facet": "elevation",
+      "identity_moves": [
+        "backdrop-blur",
+        "colored-shadow",
+        "dramatic-shadow",
+        "inset-depth",
+        "layered-overlays",
+        "soft-floating-shadows"
+      ],
+      "because": "depth-through-light-not-lines",
+      "concrete": {
+        "anchors": [],
+        "moves": {
+          "backdrop-blur": "detected by code signature",
+          "colored-shadow": "detected by code signature",
+          "dramatic-shadow": "detected by code signature",
+          "inset-depth": "detected by code signature",
+          "layered-overlays": "detected by code signature",
+          "soft-floating-shadows": "detected by code signature"
+        }
+      },
+      "metrics": {
+        "shadow_depth_px": 128.0
+      },
+      "application": []
+    }
+  ],
+  "composition": {
+    "archetype": "central-canvas",
+    "focal_anchor": "radar-field",
+    "composition": "overlaid-panels",
+    "because": "information-dense-command-center"
+  },
+  "components": [
+    {
+      "role": "beacon-card",
+      "gesture": "click",
+      "affordance": "expands-in-place",
+      "material_roles": [
+        "bevel",
+        "lighting",
+        "sheen",
+        "texture"
+      ],
+      "treatments": [
+        "demote-not-remove",
+        "interaction-lock",
+        "manufactured-latency",
+        "multi-phase"
+      ],
+      "instantiate": "Build a component that expands attached to its trigger (a dropdown/disclosure), carrying material [bevel, lighting, sheen, texture] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, multi-phase] \u2014 combine the aesthetic and the interaction in the SAME object."
+    },
+    {
+      "role": "beacon-canvas",
+      "gesture": "click",
+      "affordance": "opens-over-canvas",
+      "material_roles": [
+        "lighting",
+        "sheen"
+      ],
+      "treatments": [
+        "demote-not-remove",
+        "interaction-lock",
+        "manufactured-latency",
+        "multi-phase"
+      ],
+      "instantiate": "Build a component that opens as a layer over the canvas, carrying material [lighting, sheen] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, multi-phase] \u2014 combine the aesthetic and the interaction in the SAME object."
+    }
+  ],
+  "subtractions": [],
+  "_checklist": [
+    "COMPOSITION \u2014 organize around a central-canvas spine.  WHY: Center a primary focus and layer synchronized secondary views around it so users can monitor and act on complex state at a glance.",
+    "TYPOGRAPHY \u2014 carry the moves ['custom-display-face', 'distinct-body-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'].  WHY: treat type as the primary identity carrier.",
+    "COLOR \u2014 carry the moves ['entity-driven-color', 'expressive-accent', 'semantic-status-color'] \u00b7 APPLICATION: keep ['semantic'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: Color should encode meaning and identity rather than decorate.",
+    "DENSITY \u2014 carry the moves ['floating-overlays', 'full-bleed-canvas', 'generous-hero-space'].  WHY: prioritize open space and lightweight layering so content breathes and feels effortless, unconstrained, and premium.",
+    "AMBIENT \u2014 carry the moves ['breathing-pulse', 'drift-scroll', 'perpetual-loop', 'presence-signal', 'rotation-spin'].  WHY: An interface should feel perpetually alive and present, signaling ongoing activity through subtle continuous motion rather than appearing static or dormant.",
+    "ELEVATION \u2014 carry the moves ['backdrop-blur', 'colored-shadow', 'dramatic-shadow', 'inset-depth', 'layered-overlays', 'soft-floating-shadows'].  WHY: Convey hierarchy and elevation by simulating how light, shadow, and translucency behave in physical space rather than using explicit borders or dividers.",
+    "SURFACE/focal-entity \u2014 a materially-rich focal object (layers ['bevel', 'lighting', 'sheen', 'texture']).  WHY: surfaces should evoke physical material presence so interfaces feel believable and touchable.",
+    "BEHAVIOR/reveal \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'multi-phase'].  WHY: When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+    "BEHAVIOR/rest \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'multi-phase'].  WHY: When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+    "BEHAVIOR/toggle \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'multi-phase'].  WHY: When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+    "COMPONENT/beacon-card \u2014 Build a component that expands attached to its trigger (a dropdown/disclosure), carrying material [bevel, lighting, sheen, texture] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, multi-phase] \u2014 combine the aesthetic and the interaction in the SAME object.",
+    "COMPONENT/beacon-canvas \u2014 Build a component that opens as a layer over the canvas, carrying material [lighting, sheen] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, multi-phase] \u2014 combine the aesthetic and the interaction in the SAME object."
+  ],
+  "_guide": {
+    "build_to_the_why": "The checklist's WHY clauses are the product's dispositions \u2014 its soul. Build to those principles, not just to pass the checks. A check is a floor, not the finish: passing conformance means you didn't violate the grammar, NOT that it feels like one designer's hand.",
+    "build_order": [
+      "1. SKELETON \u2014 stand up the composition spine and the focal object first (structure before style). A great skin on no spine reads as generic.",
+      "2. MATERIAL \u2014 give the focal object its layered material (the SURFACE moves).",
+      "3. BEHAVIOR \u2014 bind the interaction grammar (gesture \u2192 response) on the component roles.",
+      "4. STYLE \u2014 carry each facet's moves at the stated MAGNITUDE (as loud as the source, not a tasteful echo).",
+      "5. POLISH \u2014 the craft below. This is where a passing build becomes a good one."
+    ],
+    "you_own_these_the_gate_cannot_check": {
+      "note": "Static analysis reads declared DOM/CSS, not the rendered/animated result. These are real identity but UNVERIFIABLE \u2014 a green report does NOT cover them, so they are yours to get right by hand.",
+      "motion_smoothness": "Real easing and staged timing \u2014 no linear tweens, no jank. Animate transform/opacity, not layout. Honor prefers-reduced-motion.",
+      "color_harmony": "The palette must read as ONE system \u2014 even lightness/chroma steps, restrained hue families. Passing the color moves \u2260 a harmonious palette.",
+      "type_layout": "Clean arrangement \u2014 aligned to a grid, consistent vertical rhythm, a hierarchy that reads. (Rich size vocabularies are fine; sloppy ARRANGEMENT is not.)",
+      "material_feel": "Glossy vs flat, focal richness \u2014 the rendered richness the layer/alpha counts can't distinguish. Make the focal object look genuinely lit."
+    },
+    "reading_the_gate": "The gate is DETERMINISTIC except color, which is semantic (marking-vs-decoration is a judgment about meaning). Consequences: (a) a FAIL that stays IDENTICAL on UNCHANGED code is REAL \u2014 fix the build, do not re-run hoping it clears, and do not contort code to game a signature. (b) The color check can shift between edits because it re-reads meaning; trust a stable verdict on unchanged code. (c) 'accent decorates instead of marks' is about MEANING: a colored glow on a data entity MARKS (good); a decorative gradient DECORATES (flagged)."
+  }
+}

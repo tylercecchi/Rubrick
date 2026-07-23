@@ -1,0 +1,52 @@
+# Secrets
+.env
+.env.local
+
+# Virtualenv
+.venv/
+
+# Caches (LLM extraction/generation caches — regenerable, now consolidated under .cache/).
+.cache/
+*_cache.json
+
+# Packaging / build artifacts
+*.egg-info/
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Python tooling caches (appear once you run tests / linters / type checks)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Local editor / agent settings (personal, machine-specific)
+.claude/settings.local.json
+
+# Historical validation probes — kept locally, not published (they hardcode references to
+# product copies that don't ship). The live guard is eval_harness.py (self-contained).
+probes/
+
+# Internal planning / handoff docs — kept locally, not published (roadmap + session log).
+STATUS.md
+SHIPPABLE.md
+
+# NOTE on durable state:
+#  - learned.json (accumulated human decisions) is TRACKED.
+#  - systems/*.json — only the synthetic eval-fixture systems (Beacon/Restrained/Generic) live here
+#    and are TRACKED. The distributed package never includes them (pyproject ships the `rubrick`
+#    package under src/ only, so a wheel carries no systems). See systems/README.md.

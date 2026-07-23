@@ -1,0 +1,126 @@
+/* BEACON — a live-signals operations console. A synthetic but coherent designed product:
+   expressive type on a dark ground, entity-driven signal color, a lit focal object, dramatic
+   elevation, and ambient life. Authored as a rich eval fixture (exercises every detector). */
+
+/* ---- custom faces (display / body / mono) — the product's typographic voice ---- */
+@font-face {
+  font-family: "BeaconGrotesk";
+  src: url("/fonts/BeaconGrotesk-Black.woff2") format("woff2");
+  font-weight: 900; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "BeaconGrotesk";
+  src: url("/fonts/BeaconGrotesk-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "BeaconText";
+  src: url("/fonts/BeaconText-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "BeaconMono";
+  src: url("/fonts/BeaconMono-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* dark ground + near-black surfaces */
+  --ground: #080b12;
+  --surface-0: #0d1119;
+  --surface-1: #131826;
+  --surface-2: #1b2233;
+  --edge: #232c40;
+  /* text — cool off-whites */
+  --text-hi: #eef2fb;
+  --text-mid: #aab4cc;
+  --text-dim: #6c7690;
+  /* expressive signal accent + entity/status hues (every one encodes meaning) */
+  --accent: #ff4d1f;
+  --accent-hot: #ff7a3d;
+  --signal-live: #34e0a1;
+  --signal-warn: #ffcf5c;
+  --signal-crit: #ff4d6d;
+  --entity-air: #4da8ff;
+  --entity-ground: #b07bff;
+  /* motion */
+  --beat: 420ms;
+  --ease-signal: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--ground);
+  color: var(--text-hi);
+  font-family: "BeaconText", system-ui, sans-serif;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- typographic voices ---- */
+.display {
+  font-family: "BeaconGrotesk", sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+.hero-numeral { font-size: 168px; }          /* type-as-graphic: a huge signal count */
+.hero-title   { font-size: 64px; }
+.body { font-family: "BeaconText", sans-serif; font-size: 15px; }
+.label {
+  font-family: "BeaconMono", ui-monospace, monospace;
+  font-size: 11px;                            /* extreme scale contrast: 168 -> 11 */
+  letter-spacing: 0.18em;                     /* treated microtype */
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- material: the lit focal object (lighting / bevel / texture / sheen) ---- */
+.beacon-material {
+  position: relative;
+  /* lighting: lit from the top, falling into cool shadow */
+  background: linear-gradient(180deg, #1b2233 0%, #131826 55%, #0d1119 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.10),        /* bevel: top edge catches light */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 48px 96px -28px rgba(0, 0, 0, 0.7);           /* dramatic float — NEUTRAL ink (hue lives on marking) */
+}
+.beacon-material::before {                          /* texture: fine signal grain */
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background-image: repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+  opacity: 0.5; mix-blend-mode: screen;
+}
+.beacon-material::after {                           /* sheen: a light pass over the face */
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,0.14), transparent 60%);
+}
+
+/* ---- elevation language ---- */
+.elev-dramatic { box-shadow: 0 64px 128px -32px rgba(0,0,0,0.8), 0 24px 64px -16px rgba(255,77,31,0.2); }
+.elev-float    { box-shadow: 0 32px 64px -24px rgba(0,0,0,0.55); }
+.elev-inset    { box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); }
+.glass         { backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); background: rgba(13,17,25,0.72); }
+
+/* ---- density: full-bleed canvas + tight data rows ---- */
+.canvas { position: fixed; inset: 0; width: 100vw; height: 100dvh; }
+.hero-pad { padding: 64px 72px 40px; }              /* generous hero space */
+.data-row { padding: 4px 8px; gap: 6px; }           /* information-dense */
+
+/* ---- ambient life ---- */
+@keyframes beacon-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(52,224,161,0.5); }
+  50% { opacity: 0.7; transform: scale(0.82); box-shadow: 0 0 0 8px rgba(52,224,161,0); }
+}
+@keyframes beacon-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes signal-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.presence { animation: beacon-pulse 2.2s var(--ease-signal) infinite; }  /* live presence signal */
+.sweep    { animation: beacon-sweep 18s linear infinite; }               /* rotating radar sweep */
+.ticker   { animation: signal-drift 30s linear infinite; }               /* perpetual drift */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}

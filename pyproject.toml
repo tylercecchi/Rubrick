@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rubrick"
+version = "0.1.0"
+description = "Compile a designed product's system from its source; coding agents build new work that provably conforms to it."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Tyler Cecchi" }]
+keywords = ["product-system", "design", "conformance", "mcp", "llm", "agents"]
+
+dependencies = [
+  "anthropic>=0.116",
+  "mcp>=1.28",
+  "pydantic>=2.13",
+  "pydantic-settings>=2.14",
+]
+
+[project.optional-dependencies]
+# Probes, trial harness, and the eval regression guard — not shipped in a runtime install.
+dev = []
+
+[project.scripts]
+# The primary interface: launch the MCP server (get_product_system / check_conformance /
+# compile_product_system / apply_review). Register this command with an MCP client.
+rubrick-mcp = "rubrick.rubrick_mcp:main"
+
+# The core library is the `rubrick` package under src/. The dev layer (probes/, eval_harness.py)
+# and runtime data (systems/, learned.json, .cache/ — resolved via rubrick.paths / RUBRICK_HOME)
+# are intentionally NOT part of the distribution.
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
