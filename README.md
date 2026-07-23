@@ -154,13 +154,13 @@ it over the Model Context Protocol.
 **To use it** — install straight from GitHub, no clone needed:
 
 ```bash
-pip install git+https://github.com/thcecchi/rubrick.git
+pip install git+https://github.com/tylercecchi/rubrick.git
 ```
 
 **To develop it** — clone and install editable (source stays linked, so edits take effect live):
 
 ```bash
-git clone https://github.com/thcecchi/rubrick.git
+git clone https://github.com/tylercecchi/rubrick.git
 cd rubrick
 python3 -m venv .venv
 ./.venv/bin/pip install -e .        # installs deps + the `rubrick-mcp` launcher
