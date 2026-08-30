@@ -117,10 +117,12 @@ def _resolve_local_imports(comp_path: str, repo: str, max_files: int = 4) -> lis
 
 
 def _interaction_richness(gathered: str) -> int:
-    """Cheap, LLM-free score of how CHOREOGRAPHED an interaction is — identity
-    interactions are multi-phase, timed, keyframe-driven and often lock input; generic
-    ones are single toggles. Used to spend the (costly) extraction budget on the most
-    identity-likely candidates first, instead of whatever sorts first alphabetically."""
+    """Cheap, LLM-free score of how identity-likely an interaction is — choreography
+    signals (multi-phase, timed, keyframe-driven, input-locking) PLUS structural
+    interaction patterns (a carousel, a drawing surface, a spotlight collection), which
+    are strong identity even with no animation at all. Used to spend the (costly)
+    extraction budget on the most identity-likely candidates first, instead of whatever
+    sorts first alphabetically."""
     s = gathered
     score = 0
     score += len(set(re.findall(r"(\d{2,4})\s*ms", s)))                              # distinct timings
@@ -128,6 +130,8 @@ def _interaction_richness(gathered: str) -> int:
     score += 3 * len(re.findall(r"setTimeout|requestAnimationFrame|\bphase\b|\bstage\b|\bstep\b", s, re.I))  # multi-phase
     score += 3 * len(re.findall(r"pointerEvents|setPointerCapture|pointer-events", s))  # interaction-lock
     score += len(re.findall(r"\btransform\b|translate|scale\(|rotate", s))            # spatial motion
+    from rubrick.components import detect_patterns
+    score += 4 * len(detect_patterns(s))  # a quiet-but-structural pattern must still rank
     return score
 
 
@@ -153,13 +157,15 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     intent_items: list[dict] = []  # captured/thin moves for designer CAPTURE/DISCARD confirm
     moment_items: list[dict] = []  # inferred moments for designer confirm/correct
 
-    # Self-discover components RECURSIVELY when the caller doesn't supply them — many
-    # products nest components in subdirectories, so a caller's flat glob (or none at
-    # all) would starve behavior discovery. rglob matches conform's _sample_components.
+    # Self-discover source files when the caller doesn't supply them — through the SHARED
+    # discovery list (components dir + src/app + src/lib + …, complete and uncapped), the
+    # same list conform observes, so components/pages living outside the components dir
+    # are seen and a recompile after new work is added can't silently miss it.
+    from rubrick.discover import discover_components, source_dirs
     if not sample_components:
-        d = pathlib.Path(repo) / comps
-        sample_components = [str(p) for p in sorted(d.rglob("*.tsx"))[:40]] if d.exists() else []
-        log.append(f"components: self-discovered {len(sample_components)} (recursive)")
+        sample_components = discover_components(repo, comps)
+        dirs = [str(pathlib.Path(d).relative_to(repo)) for d in source_dirs(repo, comps)]
+        log.append(f"coverage: {len(sample_components)} .tsx files across {dirs}")
 
     def add_disp(d: Disposition) -> Disposition:
         dispositions[d.id] = d
@@ -203,7 +209,17 @@ def compile_product_system(repo: str, gcss: str, comps: str,
          lambda: generate_facet_default("elevation").feature_set(),
          lambda obs, src: facet_aesthetic("elevation", obs, src)),
     ]
-    from rubrick.facet_signatures import DETERMINISTIC_FACETS, raw_source, signature_facet_obs
+    from rubrick.facet_signatures import (DETERMINISTIC_FACETS, raw_source,
+                                          scoped_move_prevalence, signature_facet_obs)
+    # deployment frequency of the scoped moves — measured once, per-file, deterministically;
+    # attached to each style record so the manifest can say HOW OFTEN a move is deployed
+    # (reserve-it-for-the-focal-moments) and conform can gate clear over-application.
+    try:
+        prevalence_map = scoped_move_prevalence(repo, gcss, comps)
+        log.append("prevalence: measured " + str({f: len(m) for f, m in prevalence_map.items()}))
+    except Exception as e:  # never silent — an empty map disables the deployment channel
+        prevalence_map = {}
+        log.append(f"prevalence: SKIPPED ({type(e).__name__}: {e}) — deployment channel inactive this compile")
     for facet, gather_fn, extract_fn, def_fn, concrete_fn in facet_specs:
         try:
             src = gather_fn()
@@ -241,10 +257,11 @@ def compile_product_system(repo: str, gcss: str, comps: str,
                 if facet == "color":  # HOW color is applied (kind→role bindings), not just which
                     asrc = gather_color_application(repo, gcss, comps)
                     application = extract_color_application(asrc, content_key(asrc)).model_dump()["bindings"]
+                fprev = {mv: p for mv, p in prevalence_map.get(facet, {}).items() if mv in delta}
                 styles.append(StyleRecord(facet, delta,
                                           add_disp(generate_disposition(facet, sorted(delta) or [facet])),
                                           concrete=concrete_fn(obs, src), metrics=mets,
-                                          application=application))
+                                          application=application, prevalence=fprev))
                 log.append(f"style/{facet}: CAPTURE {sorted(delta)}"
                            + (f" · disciplined({mets['spacing_discipline']})" if disciplined and not delta else "")
                            + (f" · pending-promotion {sorted(novel)}" if novel else ""))
@@ -260,10 +277,13 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         surface_comp_name, mat = pathlib.Path(found[0]).stem, found[1]
         roles = mat.material_roles()
         disp = calibrate_surface(generate_disposition("material surface", sorted(roles)), mat)
-        surfaces.append(SurfaceRecord("focal-entity", roles, add_disp(disp)))
+        from rubrick.extract_css import material_prevalence
+        sprev = material_prevalence(repo, comps)  # how RESERVED the rich material is
+        surfaces.append(SurfaceRecord("focal-entity", roles, add_disp(disp), prevalence=sprev))
         log.append(f"material: CAPTURE {sorted(roles)} from {surface_comp_name}"
                    + (f" · calibrated α≤{disp.params['overlay_alpha_ceiling']}"
-                      if disp.calibrated else " · uncalibrated (no neutral overlays)"))
+                      if disp.calibrated else " · uncalibrated (no neutral overlays)")
+                   + (f" · reserved ({sprev:.0%} of files)" if sprev is not None else ""))
     else:
         log.append("material: no lit-object surface — no record (correct if the product is flat)")
 
@@ -356,9 +376,11 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         for sig in capture_components(repo, comps, css):
             components.append(ComponentRecord(sig["role"], sig["affordance"],
                                               sig["material_roles"], sig["treatments"],
-                                              gesture=sig.get("gesture", "none")))
+                                              gesture=sig.get("gesture", "none"),
+                                              patterns=sig.get("patterns", set())))
             log.append(f"component: CAPTURE {sig['role']} · {sig['gesture']}→{sig['affordance']} · "
-                       f"material={sorted(sig['material_roles'])} interaction={sorted(sig['treatments'])}")
+                       f"material={sorted(sig['material_roles'])} interaction={sorted(sig['treatments'])}"
+                       + (f" · patterns={sorted(sig['patterns'])}" if sig.get("patterns") else ""))
     except Exception as e:
         log.append(f"components: skipped ({type(e).__name__})")
 
@@ -373,9 +395,39 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     except Exception as e:
         log.append(f"subtractions: skipped ({type(e).__name__})")
 
+    # --- OPEN OBSERVATION: novelty surveys — seeing is never bounded by what gates. ---
+    # One model call each (content-cached). Novel sightings become tears (-> review ->
+    # promotion -> a model-proposed, mechanically-admitted detector may then gate them);
+    # promoted-but-not-yet-gated patterns seen here are INSTRUCTED via the checklist.
+    observed_patterns: list[dict] = []
+    try:
+        from rubrick.novelty import survey_novel_patterns
+        psurv = survey_novel_patterns(repo, gcss, comps)
+        for s in psurv.novel:
+            if s.name not in learned.discarded("pattern"):
+                pending.append({"name": s.name, "modality": "pattern",
+                                "evidence": s.evidence, "component": s.component})
+        observed_patterns = [{"name": s.name, "component": s.component, "evidence": s.evidence}
+                             for s in psurv.unverified_seen]
+        log.append(f"patterns survey: novel {sorted(s.name for s in psurv.novel)}"
+                   + (f" · unverified-seen {sorted(o['name'] for o in observed_patterns)}"
+                      if observed_patterns else ""))
+    except Exception as e:
+        log.append(f"patterns survey: SKIPPED ({type(e).__name__}: {e})")
+    try:
+        from rubrick.novelty import survey_novel_facet_moves
+        fsurv = survey_novel_facet_moves(repo, gcss, comps)
+        for s in fsurv.novel:
+            if s.facet in ("density", "elevation", "ambient") \
+                    and s.name not in learned.discarded(s.facet):
+                pending.append({"name": s.name, "modality": s.facet, "evidence": s.evidence})
+        log.append(f"facet novelty survey: {sorted(f'{s.facet}/{s.name}' for s in fsurv.novel) or 'none'}")
+    except Exception as e:
+        log.append(f"facet novelty survey: SKIPPED ({type(e).__name__}: {e})")
+
     ps = ProductSystem(dispositions=dispositions, surfaces=surfaces, rules=rules,
                        styles=styles, composition=composition, components=components,
-                       subtractions=subtractions)
+                       subtractions=subtractions, observed_patterns=observed_patterns)
     ps._log = log  # type: ignore[attr-defined]
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []

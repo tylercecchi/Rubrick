@@ -18,15 +18,20 @@ from rubrick import learned
 _FACETS = {"typography", "color", "density", "ambient", "elevation"}
 
 
-def emit_review(ps, name: str, path: str) -> int:
+def emit_review(ps, name: str, path: str,
+                repo: str = "", globals_css: str = "", components_dir: str = "") -> int:
     """Write <system>.review.json with the compile's designer-elicitations:
       - pending_promotions: novel moves to promote/discard.
       - refine_dispositions: the generated 'why' behind each captured move, for the
         designer to sharpen (a refined prior overrides the generated one and drives
         generate/check + is what the consuming agent reads).
-    Returns the pending-promotion count. The designer edits only the blank fields."""
+    The compiled repo is recorded as the CALIBRATION TARGET so apply_review can run
+    detector synthesis (a promoted move's proposed detector must match the product it
+    was seen in). Returns the pending-promotion count; the designer edits only the
+    blank fields."""
     pending = getattr(ps, "_pending", [])
     promotions = [{"name": p["name"], "modality": p["modality"], "evidence": p["evidence"],
+                   **({"component": p["component"]} if p.get("component") else {}),
                    "decision": "", "as": "", "description": ""} for p in pending]
     dispositions = [{"id": d.id, "prior": d.prior, "refined": ""}
                     for d in ps.dispositions.values()]
@@ -37,6 +42,8 @@ def emit_review(ps, name: str, path: str) -> int:
                for m in getattr(ps, "_moments", [])]
     pathlib.Path(path).write_text(json.dumps(
         {"system": name,
+         "calibration_target": {"repo": repo, "globals_css": globals_css,
+                                "components_dir": components_dir},
          "pending_promotions": promotions,
          "refine_dispositions": dispositions,
          "confirm_intent": intent,
@@ -74,6 +81,41 @@ def apply_review(path: str) -> dict:
         if to:
             learned.record_moment_correction(it["interaction"], it["moment"], to)
             moments_fixed.append(f"{it['interaction']}: {it['moment']}->{to}")
+    # Detector synthesis needs the calibration product's source (the proposed detector
+    # must match the product the move was seen in — admission check #2).
+    target = data.get("calibration_target") or {}
+    calibration_source = ""
+    if target.get("repo") and pathlib.Path(target["repo"]).is_dir():
+        from rubrick.facet_signatures import raw_source
+        calibration_source = raw_source(target["repo"],
+                                        target.get("globals_css", "src/app/globals.css"),
+                                        target.get("components_dir", "src/components"))
+
+    # kinds whose OBSERVATION is signature-based — a promotion here should try to earn a
+    # detector so the word can actually gate. (color stays LLM-observed: its promoted
+    # vocab gates through the open-str extraction, no signature needed.)
+    _SIGNATURE_KINDS = {"density", "elevation", "ambient", "typography", "treatment", "pattern"}
+
+    def _synthesize(kind: str, vocab_name: str, desc: str, evidence: str) -> str:
+        if kind not in _SIGNATURE_KINDS:
+            return ""
+        if not calibration_source:
+            from rubrick.detectors import record_detector
+            record_detector(kind, vocab_name, None, "unsynthesized", target.get("repo", ""),
+                            reason="calibration repo unavailable at apply time")
+            return f"{kind}:{vocab_name} -> instructed-only (calibration repo unavailable)"
+        from rubrick.detectors import propose_detector, record_detector
+        try:
+            spec, status = propose_detector(kind, vocab_name, desc, evidence, calibration_source)
+        except Exception as e:
+            spec, status = None, f"synthesis failed: {type(e).__name__}"
+        if spec is not None:
+            record_detector(kind, vocab_name, spec, "active", target.get("repo", ""))
+            return f"{kind}:{vocab_name} -> ACTIVE (gates from the next compile/check)"
+        record_detector(kind, vocab_name, None, "rejected", target.get("repo", ""), reason=status)
+        return f"{kind}:{vocab_name} -> instructed-only (proposal rejected: {status})"
+
+    localities, detectors = [], []
     for it in data.get("pending_promotions", []):
         dec = (it.get("decision") or "").strip().lower()
         mod = it["modality"]
@@ -82,8 +124,25 @@ def apply_review(path: str) -> dict:
             desc = (it.get("description") or "").strip()
             if mod in _FACETS:
                 learned.record_promoted_facet(mod, vocab_name, desc)
+                # classify the new word's effect locality NOW (generated, cached globally,
+                # designer-overridable via learned.locality_overrides) — so the moment the
+                # move gains a detector, the deployment channel already knows whether its
+                # frequency is identity. A curated whitelist could never cover promoted vocab.
+                try:
+                    from rubrick.scoping import move_locality
+                    localities.append(f"{mod}:{vocab_name} -> {move_locality(mod, vocab_name)}")
+                except Exception:
+                    localities.append(f"{mod}:{vocab_name} -> unclassified (no key?)")
+                if out := _synthesize(mod, vocab_name, desc, it.get("evidence", "")):
+                    detectors.append(out)
+            elif mod == "pattern":
+                learned.record_promoted_pattern(vocab_name, desc)
+                if out := _synthesize("pattern", vocab_name, desc, it.get("evidence", "")):
+                    detectors.append(out)
             elif mod == "behavior:treatment":
                 learned.record_promoted_treatment(vocab_name, desc)
+                if out := _synthesize("treatment", vocab_name, desc, it.get("evidence", "")):
+                    detectors.append(out)
             elif mod == "behavior:moment":
                 learned.record_promoted_moment(vocab_name, desc)
             promoted.append(f"{mod}:{vocab_name}")
@@ -94,7 +153,8 @@ def apply_review(path: str) -> dict:
         else:
             unresolved.append(it["name"])
     return {"promoted": promoted, "discarded": discarded, "refined_dispositions": refined,
-            "intent": intent_set, "moment_corrections": moments_fixed, "unresolved": unresolved}
+            "intent": intent_set, "moment_corrections": moments_fixed, "unresolved": unresolved,
+            "effect_locality": localities, "detectors": detectors}
 
 
 def inspect_learned() -> dict:
@@ -110,4 +170,8 @@ def inspect_learned() -> dict:
         "intent_decisions": d["intent_decisions"],
         "moment_corrections": d["moment_corrections"],
         "discarded": d["discarded"],
+        "locality_overrides": d["locality_overrides"],
+        "promoted_patterns": d["promoted_patterns"],
+        "learned_detectors": {k: {kk: vv for kk, vv in v.items() if kk != "spec"} | {"has_spec": v.get("spec") is not None}
+                              for k, v in d["learned_detectors"].items()},
     }

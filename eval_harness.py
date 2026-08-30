@@ -60,6 +60,46 @@ def _record_count(ps) -> int:
             + len(ps.components) + len(ps.subtractions))
 
 
+def _detector_mechanics_ok() -> bool:
+    """Deterministic guard on the self-extension mechanics: a well-formed spec that
+    matches Beacon is admitted; a loose spec is rejected by the generic floor — and the
+    EMBEDDED floor must agree with the real vendored Generic fixture (kept in sync)."""
+    from rubrick.detectors import admit, run_spec
+    from rubrick.facet_signatures import raw_source
+    beacon = raw_source(*PRODUCTS["Beacon"], _COMPS)
+    generic = raw_source(*PRODUCTS["Generic"], _COMPS)
+    tight = {"all": [r"conic-gradient", r"sweep"], "none": []}
+    loose = {"all": [r"padding"], "none": []}
+    return (admit(tight, beacon) is None
+            and "generic floor" in (admit(loose, beacon) or "")
+            and run_spec(loose, generic)          # embedded floor agrees with the fixture
+            and "calibration" in (admit({"all": [r"never-in-beacon-xyz"]}, beacon) or ""))
+
+
+def _learned_pickup_ok() -> bool:
+    """An ACTIVE learned detector extends detect_patterns deterministically; a rejected
+    one never gates. Runs against a temp learned store (the real learned.json untouched)."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import detectors, learned
+    from rubrick.components import detect_patterns
+    src = 'onScroll={(e) => { other.current.scrollTop = e.currentTarget.scrollTop }}'
+    spec = {"all": [r"onScroll", r"scrollTop\s*="], "none": []}
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    detectors._memo["mtime"] = "stale"
+    try:
+        before = "sync-scroll" not in detect_patterns(src)
+        detectors.record_detector("pattern", "sync-scroll", spec, "active", "eval")
+        active = "sync-scroll" in detect_patterns(src) and "sync-scroll" not in detect_patterns("plain")
+        detectors.record_detector("pattern", "rejected-one", None, "rejected", "eval", reason="x")
+        rejected = "rejected-one" not in detect_patterns(src)
+        return before and active and rejected
+    finally:
+        learned._F = orig
+        detectors._memo["mtime"] = "stale"
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -104,6 +144,31 @@ def run() -> bool:
     b = systems["Beacon"]
     check("Beacon exercises the full engine (surface + behavior + composition + components)",
           bool(b.surfaces) and bool(b.rules) and b.composition is not None and bool(b.components))
+    # COVERAGE: identity outside the components dir must be observed. Beacon's scrubber lives in
+    # src/app/page.tsx on purpose — the shared discovery list must surface it, and component capture
+    # must carry it through to a role. A comps-only scan regression fails both.
+    from rubrick.discover import discover_components
+    repo, _ = PRODUCTS["Beacon"]
+    check("discovery reaches src/app (Beacon's page.tsx is on the shared list)",
+          any(p.endswith("src/app/page.tsx") for p in discover_components(repo, _COMPS)))
+    check("Beacon captures the src/app scrubber as a component role ('page', drag)",
+          any(c.role == "page" and c.gesture == "drag" for c in b.components))
+    # DEPLOYMENT PREVALENCE: the over-application channel must be captured — scoped style moves
+    # carry a frequency (per GENERATED effect-locality metadata, rubrick.scoping), and the
+    # surface record carries its reservedness.
+    check("Beacon captures deployment prevalence (styles and surface)",
+          any(s.prevalence for s in b.styles)
+          and all(s.prevalence is not None for s in b.surfaces))
+    # INTERACTION PATTERNS: the response-pattern channel (what an interaction structurally IS —
+    # carousel/disclosure/drawing/spotlight). BeaconCanvas's card spotlight must be captured on
+    # a component role; a regression to choreography-only capture loses it.
+    check("Beacon captures the spotlight-filter interaction pattern on a component role",
+          any("spotlight-filter" in c.patterns for c in b.components))
+    # LEARNED DETECTORS (the gate's self-extension): spec admission mechanics + pickup.
+    check("detector admission: matches calibration, rejects the generic floor",
+          _detector_mechanics_ok())
+    check("an active learned detector gates; a rejected one never does",
+          _learned_pickup_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

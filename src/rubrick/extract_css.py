@@ -115,21 +115,41 @@ def extract_focal_surface(path: str) -> MaterialStack:
                          geometry={"radius": 12, "clip": "inset(0 round 12px)"})
 
 
-def find_focal_surface(repo: str, comps: str, limit: int = 40):
+def find_focal_surface(repo: str, comps: str):
     """Locate a repo's focal material surface deterministically: the component with
     the RICHEST material stack (most non-base layers). This is a cheap regex parse,
-    so scanning every component and taking the max beats fuzzy LLM discovery for
-    element targeting. Returns (path, MaterialStack) or None if the product is flat."""
-    d = pathlib.Path(repo) / comps
-    if not d.exists():
-        return None
+    so scanning EVERY source file (the shared discovery list — components dir plus
+    src/app pages etc.) and taking the max beats fuzzy LLM discovery for element
+    targeting. Returns (path, MaterialStack) or None if the product is flat."""
+    from rubrick.discover import discover_components
     best = None
-    for cpath in sorted(d.rglob("*.tsx"))[:limit]:
+    for cpath in discover_components(repo, comps):
         try:
-            stack = extract_focal_surface(str(cpath))
+            stack = extract_focal_surface(cpath)
         except Exception:
             continue
         n = len(stack.material_roles())
         if n > 0 and (best is None or n > len(best[1].material_roles())):
-            best = (str(cpath), stack)
+            best = (cpath, stack)
     return best
+
+
+def material_prevalence(repo: str, comps: str) -> float | None:
+    """Fraction of source files carrying a GENUINELY RICH material stack (>=2 non-base
+    layers — the same bar components.py uses for 'a real lit object'). The deployment-
+    frequency side of the surface record: the focal-surface finder says WHAT the material
+    is; this says how RESERVED it is. A source that puts its crosshatched metal on one
+    focal object measures ~0.05; a candidate that wallpapers it measures high — the same
+    deterministic parse on both sides, so self-conformance is exact."""
+    from rubrick.discover import discover_components
+    files = discover_components(repo, comps)
+    if not files:
+        return None
+    rich = 0
+    for cpath in files:
+        try:
+            if len(extract_focal_surface(cpath).material_roles()) >= 2:
+                rich += 1
+        except Exception:
+            continue
+    return round(rich / len(files), 3)

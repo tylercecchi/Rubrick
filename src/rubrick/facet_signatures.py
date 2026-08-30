@@ -22,21 +22,16 @@ def raw_source(repo: str, gcss: str, comps: str) -> str:
     """The RAW globals + component source — signatures need the actual tokens (100vh, flex-grow,
     colored shadows), which the LLM-tuned gather summarizes away. Deterministic (sorted files),
     so compile and check read the same text."""
-    from rubrick.style_facets import source_dirs
+    from rubrick.discover import discover_components
     parts = []
     g = pathlib.Path(repo) / gcss
     if g.exists():
         parts.append(g.read_text())
-    seen: set[str] = set()
-    for d in source_dirs(repo, comps):  # src/components + src/app + src/lib — same reach as the gather
-        for f in sorted(pathlib.Path(d).rglob("*.tsx"))[:60]:
-            if str(f) in seen:
-                continue
-            seen.add(str(f))
-            try:
-                parts.append(f.read_text())
-            except Exception:
-                continue
+    for f in discover_components(repo, comps):  # ALL source files — one discovery list, no cap
+        try:
+            parts.append(pathlib.Path(f).read_text())
+        except Exception:
+            continue
     return "\n".join(parts)
 
 
@@ -241,7 +236,9 @@ def hybrid_type_obs(repo: str, gcss: str, comps: str, gathered: str, key_id: str
     from rubrick.typography import GroundedTypeFeature, TypeObservation
     from rubrick.type_extract import extract_typography
     llm = extract_typography(gathered, key_id)
-    moves = _type_moves(raw_source(repo, gcss, comps)) \
+    from rubrick.detectors import learned_hits
+    raw = raw_source(repo, gcss, comps)
+    moves = _type_moves(raw) | learned_hits("typography", raw) \
         | {f for f in llm.grounded_set() if f in TYPOGRAPHY_SEMANTIC}
     return TypeObservation(
         faces=llm.faces,
@@ -252,8 +249,84 @@ def hybrid_type_obs(repo: str, gcss: str, comps: str, gathered: str, key_id: str
 
 
 def detect_facet_moves(facet: str, source: str) -> set[str]:
-    """The identity moves present in a facet's source — deterministic, by code signature."""
-    return {m for m, sig in _MOVE_SIGNATURES[facet].items() if sig(source)}
+    """The identity moves present in a facet's source — deterministic, by code signature.
+    Built-ins plus ACTIVE learned detectors (a promoted move gates once its model-proposed
+    detector passes admission — rubrick.detectors)."""
+    from rubrick.detectors import learned_hits
+    return ({m for m, sig in _MOVE_SIGNATURES[facet].items() if sig(source)}
+            | learned_hits(facet, source))
+
+
+# --- DEPLOYMENT PREVALENCE (the over-application channel) ------------------------
+# WHERE a move is deployed is part of its identity: a source that reserves a texture or a
+# colored glow for the focal object made a restraint decision, and a consumer that applies
+# the same move everywhere produces noise, not identity. Which moves get a frequency is
+# decided by GENERATED effect-locality metadata (rubrick.scoping — element-local moves
+# multiply with deployment; page-global postures don't), not a curated whitelist, so
+# promoted vocabulary is covered automatically. The measurable universe is every move
+# with a per-file signature (a prevalence needs a deterministic detector on both sides).
+_STATIC_MEASURABLE: dict[str, set] = {f: set(sigs) for f, sigs in _MOVE_SIGNATURES.items()}
+_STATIC_MEASURABLE["typography"] = {"custom-display-face", "distinct-body-face",
+                                    "expressive-weight", "extreme-scale-contrast",
+                                    "treated-microtype", "type-as-graphic"}
+
+
+def measurable_moves() -> dict[str, set]:
+    """facet -> the moves with a per-file detector: the built-in signatures plus the
+    ACTIVE learned detectors — so a promoted move's deployment frequency is measured the
+    compile after its detector is admitted."""
+    from rubrick.detectors import learned_names
+    return {f: moves | learned_names(f) for f, moves in _STATIC_MEASURABLE.items()}
+
+
+def _move_hit(facet: str, move: str, text: str) -> bool:
+    if facet == "typography" and move in _STATIC_MEASURABLE["typography"]:
+        return move in _type_moves(text)
+    sig = _MOVE_SIGNATURES.get(facet, {}).get(move)
+    if sig:
+        return bool(sig(text))
+    from rubrick.detectors import learned_hits
+    return move in learned_hits(facet, text)
+
+
+def measure_move_prevalence(repo: str, gcss: str, comps: str,
+                            moves_by_facet: dict[str, set]) -> dict[str, dict[str, float]]:
+    """facet -> move -> fraction of source files carrying the move's signature, for the
+    given moves. FULLY DETERMINISTIC (Mechanism B): the SAME per-file signatures run at
+    compile and at check, so a system's stored prevalence and a candidate's re-measured
+    one are exactly comparable — a candidate that IS the source measures identical and
+    self-conforms. The check path calls this directly with the moves a system stored, so
+    checking never needs a locality classification. Per-file measurement can undercount a
+    conjunctive signature whose signals split across files (keyframes in globals,
+    `infinite` in a component) — fine: prevalence is a deployment-frequency signal, and
+    both sides undercount identically."""
+    from rubrick.discover import discover_components
+    texts = []
+    g = pathlib.Path(repo) / gcss
+    if g.exists():  # globals counts as one deployment site — a globals-only move reads 1/N, not 0
+        texts.append(g.read_text())
+    for f in discover_components(repo, comps):
+        try:
+            texts.append(pathlib.Path(f).read_text())
+        except Exception:
+            continue
+    if not texts:
+        return {}
+    out: dict[str, dict[str, float]] = {}
+    measurable = measurable_moves()
+    for facet, moves in moves_by_facet.items():
+        for m in sorted(set(moves) & measurable.get(facet, set())):
+            hits = sum(1 for t in texts if _move_hit(facet, m, t))
+            out.setdefault(facet, {})[m] = round(hits / len(texts), 3)
+    return out
+
+
+def scoped_move_prevalence(repo: str, gcss: str, comps: str) -> dict[str, dict[str, float]]:
+    """COMPILE-side prevalence: the element-local subset of the measurable universe,
+    per the generated locality metadata (may classify unseen words — cached globally)."""
+    from rubrick.scoping import element_local_moves
+    scoped = {f: element_local_moves(f, moves) for f, moves in measurable_moves().items()}
+    return measure_move_prevalence(repo, gcss, comps, scoped)
 
 
 def signature_facet_obs(facet: str, source: str):

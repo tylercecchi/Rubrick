@@ -139,9 +139,11 @@ def _candidate_concrete(facet: str, repo: str, gcss: str, comps: str, key: str) 
 
 # ---- surface + behavior re-observation (mirrors the orchestrator's discovery) ----
 
-def _sample_components(repo: str, comps: str, limit: int = 40) -> list[str]:
-    d = pathlib.Path(repo) / comps
-    return [str(p) for p in sorted(d.rglob("*.tsx"))[:limit]] if d.exists() else []
+def _sample_components(repo: str, comps: str) -> list[str]:
+    """The SHARED discovery list (components dir + src/app + src/lib + …) — the same list
+    the orchestrator compiles from, so compile and check observe the same files."""
+    from rubrick.discover import discover_components
+    return discover_components(repo, comps)
 
 
 def _rank_interaction_components(repo: str, comps: str, gcss: str, limit: int = 5) -> list[str]:
@@ -207,12 +209,23 @@ def check_conformance(candidate_repo: str, gcss: str, comps: str, key: str, ps,
     report = {}
 
     cf = candidate_facets(candidate_repo, gcss, comps, key)
+    # candidate deployment frequency — same per-file signatures as compile, measured once,
+    # for exactly the moves the SYSTEM stored (deterministic; no locality classification
+    # on the check path, so checking stays LLM-free here)
+    cand_prev: dict[str, dict[str, float]] | None = None
+    if any(sr.prevalence for sr in ps.styles):
+        from rubrick.facet_signatures import measure_move_prevalence
+        cand_prev = measure_move_prevalence(
+            candidate_repo, gcss, comps,
+            {sr.facet: set(sr.prevalence) for sr in ps.styles if sr.prevalence})
     for sr in ps.styles:
         v = sr.check(cf.get(sr.facet, set()))
         if sr.metrics:  # quantitative magnitude check (depth) folded into the facet
             v = v + sr.check_metrics(_candidate_metrics(sr.facet, candidate_repo, gcss, comps))
         if sr.application:  # HOW color is applied — kind→role binding discipline (threshold-gated)
             v = v + sr.check_application(_candidate_application(candidate_repo, gcss, comps, key))
+        if sr.prevalence and cand_prev is not None:  # over-application ceiling (deployment frequency)
+            v = v + sr.check_prevalence(cand_prev.get(sr.facet, {}))
         report[sr.facet] = {"conforms": not v, "violations": v}
 
     if native:
@@ -229,12 +242,17 @@ def check_conformance(candidate_repo: str, gcss: str, comps: str, key: str, ps,
 
     if ps.surfaces:
         cand = candidate_surface(candidate_repo, comps, key)
+        # material spread — how much of the build carries the rich material (wallpaper check)
+        cand_spread = None
+        if any(rec.prevalence is not None for rec in ps.surfaces):
+            from rubrick.extract_css import material_prevalence
+            cand_spread = material_prevalence(candidate_repo, comps)
         for rec in ps.surfaces:
             if cand is None:
                 report[f"surface:{rec.applies_to}"] = {"conforms": None,
                     "violations": [], "note": "no comparable surface in candidate"}
             else:
-                v = rec.check(cand)
+                v = rec.check(cand, spread=cand_spread)
                 report[f"surface:{rec.applies_to}"] = {"conforms": not v, "violations": v,
                     "calibrated": rec.disposition.calibrated}
 

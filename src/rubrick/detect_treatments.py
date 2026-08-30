@@ -229,7 +229,10 @@ def detect_treatments(source: str) -> set[str]:
     found = {name for name, sig in _SIGNATURES.items() if sig(rsrc)}
     if _temporal_symmetry(source):  # needs the original names for phase cues
         found.add("symmetry")
-    return found
+    # ACTIVE learned detectors (model-proposed at promotion, mechanically admitted) — a
+    # promoted treatment can now actually gate, instead of staying vocab-only forever.
+    from rubrick.detectors import learned_hits
+    return found | learned_hits("treatment", rsrc)
 
 
 def detect_timings(source: str) -> dict:

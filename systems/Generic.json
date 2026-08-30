@@ -84,13 +84,34 @@
           "reserved": false,
           "evidence": "#28a745 used as a background fill in Card.tsx, leaking status color into surface"
         }
-      ]
+      ],
+      "prevalence": {}
     }
   ],
   "composition": null,
   "components": [],
   "subtractions": [],
+  "observed_patterns": [],
   "_checklist": [
-    "COLOR \u2014 carry the moves ['semantic-status-color', 'sentiment-coding'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is LIGHT (tonality 0.98) \u2014 match that polarity."
-  ]
+    "COLOR \u2014 carry the moves ['semantic-status-color', 'sentiment-coding'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is LIGHT (tonality 0.98) \u2014 match that polarity.  WHY: Color should encode meaning and status so users interpret state and sentiment instantly, not just decorate the interface."
+  ],
+  "_guide": {
+    "deployment_frequency": "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the source deploys its strongest moves \u2014 textures, glows, loops, display type \u2014 at a specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and that restraint is itself part of the identity. Applying a reserved move to every element destroys the figure/ground contrast that makes it read as identity; the build goes noisy and one-dimensional, and the gate flags clear over-application. Match the deployment pattern, not just the move.",
+    "build_to_the_why": "The checklist's WHY clauses are the product's dispositions \u2014 its soul. Build to those principles, not just to pass the checks. A check is a floor, not the finish: passing conformance means you didn't violate the grammar, NOT that it feels like one designer's hand.",
+    "build_order": [
+      "1. SKELETON \u2014 stand up the composition spine and the focal object first (structure before style). A great skin on no spine reads as generic.",
+      "2. MATERIAL \u2014 give the focal object its layered material (the SURFACE moves).",
+      "3. BEHAVIOR \u2014 bind the interaction grammar (gesture \u2192 response) on the component roles.",
+      "4. STYLE \u2014 carry each facet's moves at the stated MAGNITUDE (as loud as the source, not a tasteful echo).",
+      "5. POLISH \u2014 the craft below. This is where a passing build becomes a good one."
+    ],
+    "you_own_these_the_gate_cannot_check": {
+      "note": "Static analysis reads declared DOM/CSS, not the rendered/animated result. These are real identity but UNVERIFIABLE \u2014 a green report does NOT cover them, so they are yours to get right by hand.",
+      "motion_smoothness": "Real easing and staged timing \u2014 no linear tweens, no jank. Animate transform/opacity, not layout. Honor prefers-reduced-motion.",
+      "color_harmony": "The palette must read as ONE system \u2014 even lightness/chroma steps, restrained hue families. Passing the color moves \u2260 a harmonious palette.",
+      "type_layout": "Clean arrangement \u2014 aligned to a grid, consistent vertical rhythm, a hierarchy that reads. (Rich size vocabularies are fine; sloppy ARRANGEMENT is not.)",
+      "material_feel": "Glossy vs flat, focal richness \u2014 the rendered richness the layer/alpha counts can't distinguish. Make the focal object look genuinely lit."
+    },
+    "reading_the_gate": "The gate is DETERMINISTIC except color, which is semantic (marking-vs-decoration is a judgment about meaning). Consequences: (a) a FAIL that stays IDENTICAL on UNCHANGED code is REAL \u2014 fix the build, do not re-run hoping it clears, and do not contort code to game a signature. (b) The color check can shift between edits because it re-reads meaning; trust a stable verdict on unchanged code. (c) 'accent decorates instead of marks' is about MEANING: a colored glow on a data entity MARKS (good); a decorative gradient DECORATES (flagged)."
+  }
 }

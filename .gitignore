@@ -44,6 +44,7 @@ probes/
 # Internal planning / handoff docs — kept locally, not published (roadmap + session log).
 STATUS.md
 SHIPPABLE.md
+AGENT_MEMORY.md
 
 # NOTE on durable state:
 #  - learned.json (accumulated human decisions) is TRACKED.

@@ -75,6 +75,96 @@ def detect_affordance(source: str) -> str:
 _DISTINCTIVE_GESTURES = {"drag", "double-click", "hover", "scroll"}
 
 
+# --- INTERACTION PATTERNS — what the interaction structurally IS -------------------
+# The response-pattern channel: recurring gesture→response ARCHETYPES a component hosts
+# (a carousel's sequential traversal, progressive disclosure, pointer drawing, select-one-
+# dim-the-rest). Distinct from treatments (which capture the CHOREOGRAPHY of a change) and
+# from affordance (a single dominant response kind): a pattern is the structural shape of
+# the interaction itself, a component can host several, and quiet-but-distinctive patterns
+# carry identity with no animation at all. Deterministic per the detector discipline —
+# each signature needs conjunctive, unambiguous markers so generic never matches.
+
+def _sequential_traverse(s: str) -> bool:
+    # a carousel/slideshow: an ordered position stepped forward/back AND mapped to spatial
+    # motion — or an explicit carousel library/marker. An index alone (tabs) must not match.
+    lib = re.search(r"<(?:Swiper|Carousel|Splide|Slider)\b|embla|keen-slider|react-slick|\bcarousel\b", s, re.I)
+    idx = re.search(r"(?:active|current|slide|selected)?(?:Index|Slide)\b|\[\s*index\s*,", s)
+    step = re.search(r"(?:=>\s*\w*\s*[+\-]\s*1\b)|[+\-]=\s*1\b|\b(?:next|prev(?:ious)?)(?:Slide|Item|Card|Step)?\s*[=(]", s, re.I)
+    spatial = re.search(r"translateX?\([^)]*(?:\*|100|%)|scroll-snap-type|scrollSnapType|scrollTo\(|scrollIntoView", s)
+    return bool(lib) or bool(idx and step and spatial)
+
+
+def _staged_disclosure(s: str) -> bool:
+    # progressive disclosure: content revealed in STAGES, not one open/closed toggle (that
+    # is expands-in-place). Multiple numeric step-gates, a set/map of expanded sections, or
+    # a show-more state that lifts a slice/limit.
+    step_gates = len(set(re.findall(r"(?:step|stage|level|tier)\s*(?:>=?|===?)\s*(\d+)", s, re.I))) >= 2
+    expanded_set = bool(re.search(r"(?:expanded|open(?:ed)?|revealed|visible)\w*\.(?:has|includes)\(", s)) \
+        and bool(re.search(r"&&|\?\s*", s))
+    show_more = bool(re.search(r"show(?:ing)?(?:More|All)|see[ _]?more|expandAll", s, re.I)) \
+        and bool(re.search(r"\.slice\(\s*0\s*,|\.slice\(0,|limit\b", s))
+    return step_gates or expanded_set or show_more
+
+
+def _pointer_authoring(s: str) -> bool:
+    # drawing/annotating with the pointer: pointer-move tracking PLUS accumulated geometry
+    # (a 2D-canvas path, an SVG path built from collected points, or a freehand lib). A
+    # drag-slider tracks the pointer but accumulates nothing — it must not match.
+    tracking = re.search(r"onPointerMove|onMouseMove|pointermove|mousemove", s, re.I)
+    canvas_path = re.search(r"getContext\(\s*[\"']2d", s) \
+        and re.search(r"\blineTo\(|beginPath\(|quadraticCurveTo\(|\bstroke\(", s)
+    svg_path = re.search(r"<path\b[^>]*d=\{", s) \
+        and re.search(r"points\b|\bstrokes?\b|\bpaths?\b", s)
+    accumulating = re.search(r"(?:points|strokes?|paths?|marks)\w*\.(?:push|concat)\(|"
+                             r"set(?:Points|Strokes?|Paths?|Marks)\(|\[\s*\.\.\.\s*(?:points|strokes?|paths?)", s)
+    freehand = re.search(r"perfect-freehand|getStroke\(|roughjs|signature[_-]?pad", s, re.I)
+    return bool(freehand) or bool(tracking and (canvas_path or (svg_path and accumulating) or accumulating))
+
+
+def _spotlight_filter(s: str) -> bool:
+    # select/hover ONE member of a collection and the REST demote (fade/dim/blur): a
+    # rendered collection + a per-item visual conditional keyed on an identity comparison
+    # against the selection. The three together are the pattern; any alone is common.
+    collection = ".map(" in s
+    dim_conditional = re.search(r"(?:opacity|filter)\s*:\s*[^,;}\n]*\?", s)
+    identity_cmp = re.search(r"(?:selected|active|hovered|focused|highlighted)[\w.]*\s*===|"
+                             r"===\s*[\w.]*(?:selected|active|hovered|focused|highlighted)", s, re.I)
+    return bool(collection and dim_conditional and identity_cmp)
+
+
+_PATTERN_SIGNATURES = {
+    "sequential-traverse": _sequential_traverse,
+    "staged-disclosure": _staged_disclosure,
+    "pointer-authoring": _pointer_authoring,
+    "spotlight-filter": _spotlight_filter,
+}
+
+PATTERN_DESCRIPTIONS = {
+    "sequential-traverse": "steps through an ordered sequence in place (carousel/slideshow: "
+                           "next/prev traversal with spatial motion)",
+    "staged-disclosure": "reveals content progressively in stages, never all at once",
+    "pointer-authoring": "the pointer authors marks/geometry directly onto a surface (drawing)",
+    "spotlight-filter": "selecting one member of a collection spotlights it while the rest demote "
+                        "(fade/dim) in place",
+}
+
+
+def detect_patterns(source: str) -> set[str]:
+    """The interaction PATTERNS a source hosts — deterministic, by code signature. The
+    built-ins are the seed corpus; ACTIVE learned detectors (model-proposed at promotion,
+    mechanically admitted — see rubrick.detectors) extend the set. Same source -> same
+    set (compile and check agree exactly)."""
+    from rubrick.detectors import learned_hits
+    return ({name for name, sig in _PATTERN_SIGNATURES.items() if sig(source)}
+            | learned_hits("pattern", source))
+
+
+def pattern_description(name: str) -> str:
+    """Built-in or promoted description for a pattern name (for manifest instructions)."""
+    from rubrick import learned
+    return PATTERN_DESCRIPTIONS.get(name) or learned.promoted_patterns().get(name, name)
+
+
 def detect_gesture(source: str) -> str:
     """The primary GESTURE that triggers a component's response — the trigger half of an
     interaction pattern (gesture → response). Deterministic, from the component's handlers."""
@@ -110,11 +200,12 @@ def component_signature(path: str, css: str, repo: str) -> dict:
     own = pathlib.Path(path).read_text()
     return {
         "role": _kebab(pathlib.Path(path).stem),
-        # gesture + affordance from the component's OWN file — its structure, not shared imports
-        # (a swap hook pulled into every gather would make every component read 'replaces-subject').
-        # Together they are the interaction pattern: gesture → response.
+        # gesture + affordance + patterns from the component's OWN file — its structure, not
+        # shared imports (a swap hook pulled into every gather would make every component read
+        # 'replaces-subject'). Together they are the interaction: gesture → response → pattern.
         "gesture": detect_gesture(own),
         "affordance": detect_affordance(own),
+        "patterns": detect_patterns(own),
         "material_roles": material,
         "treatments": detect_treatments(bsrc),
     }
@@ -127,23 +218,23 @@ def _identity_bearing(sig: dict) -> bool:
     is rich but NOT identity, and must not become a required role (trial over-captured it).
     Same delta-from-generic discipline as everything else, applied with 'is this central?'."""
     return (len(sig["material_roles"]) >= 2 or len(sig["treatments"]) >= 3
-            or sig.get("gesture") in _DISTINCTIVE_GESTURES)  # a distinctive gesture IS identity
+            or sig.get("gesture") in _DISTINCTIVE_GESTURES   # a distinctive gesture IS identity
+            or bool(sig.get("patterns")))                    # so is a structural pattern (carousel, drawing…)
 
 
 def capture_components(repo: str, comps: str, css: str, limit: int = 3) -> list[dict]:
     """The product's few identity-bearing component roles, ranked by combined material +
     interaction richness (reusing the same signals surface and behavior rank on). Returns the
     role recipes (aesthetic x interaction x affordance), deterministically."""
-    d = pathlib.Path(repo) / comps
-    if not d.exists():
-        return []
+    from rubrick.discover import discover_components
     sigs = []
-    for cpath in sorted(d.rglob("*.tsx"))[:40]:
-        sig = component_signature(str(cpath), css, repo)
+    for cpath in discover_components(repo, comps):  # ALL source files — ranked below, capped after
+        sig = component_signature(cpath, css, repo)
         if _identity_bearing(sig):
             sig["_richness"] = len(sig["material_roles"]) + len(sig["treatments"]) \
                 + (1 if sig["affordance"] != "inline" else 0) \
-                + (1 if sig.get("gesture") in _DISTINCTIVE_GESTURES else 0)  # a distinctive gesture ranks up
+                + (1 if sig.get("gesture") in _DISTINCTIVE_GESTURES else 0) \
+                + 2 * len(sig.get("patterns", ()))  # a structural pattern is strong identity — rank it up
             sigs.append(sig)
     sigs.sort(key=lambda s: s["_richness"], reverse=True)
     for s in sigs:

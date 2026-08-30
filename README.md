@@ -73,6 +73,29 @@ OBSERVE ─▶ SALIENCE ─▶ ELICIT ─▶ LIFT ─▶ COMPILE ─▶ GENERATE
   prompt _and_ the output schema. Dimensions without a promotable vocab get a **tear-escape**
   (`novel_features`) so novelty is captured, never silently dropped.
 
+- **The gate self-extends too (seen → instructed → gated).** Observation is open — novelty
+  surveys read every product with no fixed list, so an interaction pattern or move no detector
+  anticipates still surfaces as a tear. Verification is closed — only deterministic detectors
+  gate. Promotion bridges them: the model *proposes* a detector for the promoted word (a
+  declarative regex spec stored in `learned.json`, not code), and it only starts gating after
+  mechanically proving it matches the product it was seen in and does **not** match a generic
+  build. Until then the word is instructed in the checklist but unverified. The hand-written
+  signatures are the seed corpus, not the ceiling.
+
+- **Deployment frequency is part of the delta.** *Where* a move is deployed is itself identity: a
+  product that reserves its metal texture for the focal object made a restraint decision.
+  Element-local moves (textures, glows, loops, display type — classified by generated
+  effect-locality metadata, not a curated list, so promoted vocabulary is covered too) carry their
+  observed frequency; the checklist says "reserve it" with the rate, and the gate flags clear
+  over-application — the symmetric ceiling to the magnitude floors. A build that applies every
+  captured move everywhere reads as noise, not identity, and now fails for it.
+
+- **Interaction patterns are captured structurally.** Beyond choreography (timings, phases,
+  symmetry), the tool detects what an interaction *is* — a carousel's sequential traversal,
+  progressive disclosure, pointer drawing on a canvas, select-one-spotlight-the-rest — as
+  deterministic signatures on component roles. A quiet-but-distinctive pattern is identity even
+  with no animation, and a conforming build must carry the pattern somewhere in its focal group.
+
 - **Human-assist: confidence is the scheduler.** The tool asks only where it's genuinely
   unsure _and_ the human is the only source, ranked by leverage. Every answer lands in
   `learned.json` as reusable structure, so confidence compounds — and it's **global**: rules
@@ -125,7 +148,11 @@ regression guard is `eval_harness.py` in the repo root. Key entry points:
   (`style={{…}}`), or **Tailwind** (the `tailwind.config` theme + utility classes). No particular one
   is required; Tailwind is supported but optional (a graceful no-op if you don't use it).
 - **Inputs** — a globals CSS file and a components directory. Defaults are `src/app/globals.css` and
-  `src/components`; pass `globals_css` / `components_dir` if yours differ.
+  `src/components`; pass `globals_css` / `components_dir` if yours differ. Coverage goes beyond the
+  components dir: every scanner reads one shared discovery list — the components dir **plus**
+  `src/app`, `src/lib`, and `src/styles` — so identity living in a page or shared module is observed
+  too, and a recompile after new pages/components are added can't silently miss them (the compile
+  log's `coverage:` line shows exactly what was read).
 
 ### Best practices — for a richer system
 - **Point it at a product with real identity.** Rubrick captures the *delta from generic* — a plain

@@ -36,6 +36,15 @@ _DISTINCTIVE_GESTURES = {"drag", "double-click", "hover", "scroll"}
 # garage has no map to `zoom-to`) shouldn't be failed for it. Captured, shown, but not gated.
 # Gestures stay strict (drag transfers to any domain); only surface-bound responses go advisory.
 _SURFACE_DEPENDENT_RESPONSES = {"zoom-to"}
+# DEPLOYMENT FREQUENCY (the over-application channel). A move's identity includes WHERE it's
+# deployed: a reserved texture/glow/loop applied everywhere reads as noise, not identity. A
+# system-side prevalence at/below _RESERVED_MAX marks a move as reserved (it gets a DEPLOYMENT
+# note and a ceiling); the ceiling fires only on a CLEAR spread — candidate prevalence beyond
+# sys×_SPREAD_MULT + _SPREAD_PAD — so a candidate that IS the source always self-conforms and
+# modest variation stays silent. Symmetric counterpart of the magnitude FLOORS in check_metrics.
+_RESERVED_MAX = 0.35
+_SPREAD_MULT = 3.0
+_SPREAD_PAD = 0.15
 _DEFAULT_ALPHA_CEILING = 0.15  # subtle fallback when a surface disposition is uncalibrated
 _DEFAULT_CEREMONY_MS = 220.0    # fallback ceremony scale (ms per unit disorientation)
 _DEFAULT_ENTER_RATIO = 0.75
@@ -89,9 +98,18 @@ class SurfaceRecord:
     applies_to: str
     required_roles: set[str]
     disposition: Disposition
+    prevalence: float | None = None  # fraction of source files carrying rich material (reservedness)
 
-    def check(self, cand: MaterialStack) -> list[str]:
+    def check(self, cand: MaterialStack, spread: float | None = None) -> list[str]:
         v = []
+        # DEPLOYMENT: the source reserves this material (low prevalence) but the build
+        # wallpapers it — right material, wrong frequency. Fires only on a clear spread.
+        if (self.prevalence is not None and self.prevalence <= _RESERVED_MAX
+                and spread is not None
+                and spread > self.prevalence * _SPREAD_MULT + _SPREAD_PAD):
+            v.append(f"{self.applies_to}: rich material on {spread:.0%} of the build's components "
+                     f"but the source reserves it for ~{self.prevalence:.0%} — the material reads "
+                     f"as wallpaper, not a focal accent; keep it on the focal object")
         missing = self.required_roles - cand.material_roles()
         if missing:
             v.append(f"{self.applies_to}: missing material layers {sorted(missing)} "
@@ -186,6 +204,7 @@ class StyleRecord:
     concrete: dict = field(default_factory=dict)  # CONCRETE aesthetics (native mode)
     metrics: dict = field(default_factory=dict)   # QUANTITATIVE magnitudes (depth)
     application: list = field(default_factory=list)  # color kind→role BINDINGS (how applied)
+    prevalence: dict = field(default_factory=dict)  # move → deployment frequency (scoped moves only)
 
     def check(self, candidate_features: set[str]) -> list[str]:
         req = self.required_features
@@ -301,6 +320,26 @@ class StyleRecord:
                          f"{kind} color to {sorted(strayed)}; saturated color floods surfaces "
                          f"instead of marking, breaking the discipline that makes it read as one "
                          f"product (right palette, wrong application)")
+        return v
+
+    def check_prevalence(self, cand_prevalence: dict) -> list[str]:
+        """DEPLOYMENT ceiling — the symmetric counterpart of the magnitude floors above. A
+        move can be PRESENT at the right magnitude and still wrong: a texture/glow/loop the
+        source reserves for its focal moments, applied across the whole build, reads as
+        noise, not identity. Both sides are measured by the same per-file signatures
+        (facet_signatures.scoped_move_prevalence), so the source self-conforms exactly;
+        only a CLEAR spread beyond the reserved frequency fires."""
+        v = []
+        for move in sorted(self.required_features):
+            sys_p = self.prevalence.get(move)
+            cand_p = cand_prevalence.get(move)
+            if sys_p is None or cand_p is None or sys_p > _RESERVED_MAX:
+                continue  # unscoped move, or the source itself deploys it broadly
+            if cand_p > sys_p * _SPREAD_MULT + _SPREAD_PAD:
+                v.append(f"{self.facet}: '{move}' is deployed across {cand_p:.0%} of the build's "
+                         f"source files but the source reserves it (~{sys_p:.0%}) — over-applied; "
+                         f"a reserved move used everywhere reads as noise, not identity. Keep it "
+                         f"for the focal moments it marks")
         return v
 
     def check_native(self, candidate_concrete: dict) -> list[str]:
@@ -427,6 +466,7 @@ class ComponentRecord:
     material_roles: set[str] = field(default_factory=set)
     treatments: set[str] = field(default_factory=set)
     gesture: str = "none"                                  # the TRIGGER (gesture → response)
+    patterns: set[str] = field(default_factory=set)        # structural interaction PATTERNS (carousel, drawing…)
 
     def _bound(self) -> bool:  # binds BOTH an aesthetic and an interaction (the point of this layer)
         return bool(self.material_roles) and bool(self.treatments)
@@ -441,7 +481,10 @@ class ComponentRecord:
                     # a distinctive gesture (drag/hover/…) IS the pattern's identity — it must
                     # DOMINATE the match, so a drag role binds the build's drag component, not a
                     # click element that happens to share a treatment or two.
-                    + (5 if c.get("gesture") == self.gesture and self.gesture in _DISTINCTIVE_GESTURES else 0))
+                    + (5 if c.get("gesture") == self.gesture and self.gesture in _DISTINCTIVE_GESTURES else 0)
+                    # a shared structural pattern (carousel, drawing, spotlight) is likewise a
+                    # stronger identity signal than an incidental shared treatment.
+                    + 3 * len(self.patterns & c.get("patterns", set())))
         if not cands:
             return None, 0
         best = max(cands, key=overlap)
@@ -487,6 +530,18 @@ class ComponentRecord:
             v.append(f"component/{self.role}: the role is triggered by '{self.gesture}' but the "
                      f"build's nearest component uses '{best.get('gesture', 'none')}' — the "
                      f"interaction pattern differs (the gesture that drives the response)")
+        # PATTERNS: the structural interaction archetypes (sequential-traverse, staged-disclosure,
+        # pointer-authoring, spotlight-filter…). Checked against the GROUP like treatments — a
+        # decomposed build may split a pattern's parts across co-rendered components; only a build
+        # where the pattern exists NOWHERE in the focal group fails.
+        if self.patterns:
+            group_patterns: set[str] = set().union(*(c.get("patterns", set()) for c in group)) if group else set()
+            missing_patterns = self.patterns - group_patterns
+            if missing_patterns:
+                v.append(f"component/{self.role}: the role hosts the interaction pattern(s) "
+                         f"{sorted(missing_patterns)}, but the build's focal object-group carries "
+                         f"none of them — the structural interaction (what it IS, not how it "
+                         f"animates) is absent")
         return v
 
     def emit(self) -> dict:
@@ -499,10 +554,15 @@ class ComponentRecord:
             parts.append(f"carrying material [{', '.join(sorted(self.material_roles))}]")
         if self.treatments:
             parts.append(f"hosting interaction [{', '.join(sorted(self.treatments))}]")
+        if self.patterns:
+            from rubrick.components import pattern_description
+            parts.append("embodying the pattern(s) " + "; ".join(
+                f"'{p}' ({pattern_description(p)})" for p in sorted(self.patterns)))
         combine = " — combine the aesthetic and the interaction in the SAME object" if self._bound() else ""
         trigger = (f"On {self.gesture}, it " if self.gesture in _DISTINCTIVE_GESTURES else "")
         return {"role": self.role, "gesture": self.gesture, "affordance": self.affordance,
                 "material_roles": sorted(self.material_roles), "treatments": sorted(self.treatments),
+                "patterns": sorted(self.patterns),
                 "instantiate": f"{trigger}{'builds' if trigger else 'Build'} a component that {aff}"
                                + (", " + " and ".join(parts) if parts else "") + combine
                                + (f" Triggered by {self.gesture}." if self.gesture in _DISTINCTIVE_GESTURES else ".")}
@@ -517,6 +577,10 @@ class ProductSystem:
     composition: "CompositionRecord | None" = None
     components: list["ComponentRecord"] = field(default_factory=list)
     subtractions: list = field(default_factory=list)  # deliberate OMISSIONS (negative-space identity)
+    # promoted-but-not-yet-gated interaction patterns SEEN in this product (open
+    # observation): instructed via the checklist, verified only once a detector is
+    # admitted — the middle stage of seen -> instructed -> gated.
+    observed_patterns: list = field(default_factory=list)
 
     def surface_for(self, role: str):
         return next((s for s in self.surfaces if s.applies_to == role), None)
@@ -544,13 +608,15 @@ class ProductSystem:
             "dispositions": {d.id: {"prior": d.prior, "calibrated": d.params}
                              for d in self.dispositions.values()},
             "surfaces": [{"applies_to": s.applies_to, "requires": sorted(s.required_roles),
-                          "because": s.disposition.id} for s in self.surfaces],
+                          "because": s.disposition.id, "prevalence": s.prevalence}
+                         for s in self.surfaces],
             "rules": [{"applies_to": r.applies_to, "requires": sorted(r.required_features),
                        "because": r.disposition.id, "exit_ms": r.exit_ms, "enter_ms": r.enter_ms}
                       for r in self.rules],
             "styles": [{"facet": s.facet, "identity_moves": sorted(s.required_features),
                         "because": s.disposition.id, "concrete": s.concrete,
-                        "metrics": s.metrics, "application": s.application}
+                        "metrics": s.metrics, "application": s.application,
+                        "prevalence": s.prevalence}
                        for s in self.styles],
             "composition": ({"archetype": self.composition.archetype,
                              "focal_anchor": self.composition.focal_anchor,
@@ -559,6 +625,7 @@ class ProductSystem:
                             if self.composition else None),
             "components": [c.emit() for c in self.components],
             "subtractions": self.subtractions,
+            "observed_patterns": self.observed_patterns,
         }
         m["_checklist"] = self._checklist()
         m["_guide"] = self._guide()
@@ -586,6 +653,15 @@ class ProductSystem:
                          + self._why(self.composition.disposition))
         for s in self.styles:
             line = f"{s.facet.upper()} — carry the moves {sorted(s.required_features)}"
+            reserved = sorted(m for m in s.required_features
+                              if s.prevalence.get(m) is not None
+                              and s.prevalence[m] <= _RESERVED_MAX)
+            if reserved:
+                freqs = ", ".join(f"'{m}' in ~{s.prevalence[m]:.0%} of source files"
+                                  for m in reserved)
+                line += (f" · DEPLOYMENT: reserve {reserved} for the focal moments — the source "
+                         f"deploys sparingly ({freqs}); a reserved move applied everywhere stops "
+                         f"reading as identity")
             if s.facet == "color" and s.application:
                 roles: dict = {}
                 for b in s.application:
@@ -604,8 +680,13 @@ class ProductSystem:
                     line += " · " + " · ".join(extra)
             items.append(line + "." + self._why(s.disposition))
         for surf in self.surfaces:
-            items.append(f"SURFACE/{surf.applies_to} — a materially-rich focal object "
-                         f"(layers {sorted(surf.required_roles)})." + self._why(surf.disposition))
+            line = (f"SURFACE/{surf.applies_to} — a materially-rich focal object "
+                    f"(layers {sorted(surf.required_roles)}).")
+            if surf.prevalence is not None and surf.prevalence <= _RESERVED_MAX:
+                line += (f" DEPLOYMENT: reserve this material for the focal object — only "
+                         f"~{surf.prevalence:.0%} of source components carry it; the same "
+                         f"texture on everything reads as wallpaper, not a lit centerpiece.")
+            items.append(line + self._why(surf.disposition))
         for r in self.rules:
             items.append(f"BEHAVIOR/{r.applies_to} — an interaction carrying {sorted(r.required_features)}"
                          + (f" at ~{r.exit_ms}ms" if r.exit_ms else "") + "."
@@ -615,6 +696,13 @@ class ProductSystem:
         for s in self.subtractions:
             items.append(f"SUBTRACTION — the product is {s['note']}. Do NOT add it back; this "
                          f"identity is defined by its ABSENCE (adding it is a violation by excess).")
+        for op in self.observed_patterns:
+            from rubrick.components import pattern_description
+            where = f" (seen in {op['component']})" if op.get("component") else ""
+            items.append(f"PATTERN/{op['name']} (unverified) — the product carries this "
+                         f"interaction pattern: {pattern_description(op['name'])}{where}. "
+                         f"Evidence: {op.get('evidence', '')[:160]}. The gate cannot verify this "
+                         f"one yet — reproduce it and own it by hand, like the craft in the guide.")
         return items
 
     def _guide(self) -> dict:
@@ -624,6 +712,15 @@ class ProductSystem:
         the failure modes we see agents hit (dismissing a real finding as noise, chasing green
         instead of craft, styling before there's a spine)."""
         return {
+            "deployment_frequency": (
+                "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the "
+                "source deploys its strongest moves — textures, glows, loops, display type — at a "
+                "specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and "
+                "that restraint is itself part of the identity. Applying a reserved move to every "
+                "element destroys the figure/ground contrast that makes it read as identity; the "
+                "build goes noisy and one-dimensional, and the gate flags clear over-application. "
+                "Match the deployment pattern, not just the move."
+            ),
             "build_to_the_why": (
                 "The checklist's WHY clauses are the product's dispositions — its soul. Build to "
                 "those principles, not just to pass the checks. A check is a floor, not the finish: "
@@ -679,9 +776,11 @@ def load_product_system(path: str) -> ProductSystem:
              for i, d in m["dispositions"].items()}
     styles = [StyleRecord(s["facet"], set(s["identity_moves"]), disps[s["because"]],
                           concrete=s.get("concrete", {}), metrics=s.get("metrics", {}),
-                          application=s.get("application", []))
+                          application=s.get("application", []),
+                          prevalence=s.get("prevalence", {}))
               for s in m.get("styles", [])]
-    surfaces = [SurfaceRecord(s["applies_to"], set(s["requires"]), disps[s["because"]])
+    surfaces = [SurfaceRecord(s["applies_to"], set(s["requires"]), disps[s["because"]],
+                              prevalence=s.get("prevalence"))
                 for s in m.get("surfaces", [])]
     rules = [RuleRecord(r["applies_to"], set(r["requires"]), disps[r["because"]],
                         exit_ms=r.get("exit_ms"), enter_ms=r.get("enter_ms"))
@@ -692,8 +791,10 @@ def load_product_system(path: str) -> ProductSystem:
                    if cm else None)
     components = [ComponentRecord(c["role"], c["affordance"],
                                   set(c.get("material_roles", [])), set(c.get("treatments", [])),
-                                  gesture=c.get("gesture", "none"))
+                                  gesture=c.get("gesture", "none"),
+                                  patterns=set(c.get("patterns", [])))
                  for c in m.get("components", [])]
     return ProductSystem(dispositions=disps, surfaces=surfaces, rules=rules, styles=styles,
                          composition=composition, components=components,
-                         subtractions=m.get("subtractions", []))
+                         subtractions=m.get("subtractions", []),
+                         observed_patterns=m.get("observed_patterns", []))

@@ -14,7 +14,8 @@ keywords = ["product-system", "design", "conformance", "mcp", "llm", "agents"]
 
 dependencies = [
   "anthropic>=0.116",
-  "mcp>=1.28",
+  # <2: mcp 2.x renamed FastMCP -> MCPServer (breaking); rubrick_mcp is written against the 1.x API.
+  "mcp>=1.28,<2",
   "pydantic>=2.13",
   "pydantic-settings>=2.14",
 ]

@@ -60,17 +60,21 @@ def is_generic(archetype: str, focal_anchor: Optional[str]) -> bool:
 
 
 def gather_composition_source(repo: str, gcss: str, comps: str) -> str:
+    from rubrick.discover import discover_components
     root = pathlib.Path(repo)
     parts: list[str] = []
+    seen: set[str] = set()
     for rel in _ROOT_FILES:
         p = root / rel
         if p.exists():
+            seen.add(str(p))
             parts.append(f"// {rel}\n" + "\n".join(p.read_text().splitlines()[:130]))
-    d = root / comps
-    if d.exists():
-        matched = [p for p in sorted(d.rglob("*.tsx")) if _ROOT_NAME.search(p.stem)]
-        for p in matched[:5]:
-            parts.append(f"// {p.name}\n" + "\n".join(p.read_text().splitlines()[:130]))
+    # shell-named files from the SHARED discovery list (components dir + src/app + …) — a
+    # Workspace/Canvas living beside a page in src/app is as structural as one in components
+    matched = [pathlib.Path(f) for f in discover_components(repo, comps)
+               if str(pathlib.Path(f)) not in seen and _ROOT_NAME.search(pathlib.Path(f).stem)]
+    for p in matched[:5]:
+        parts.append(f"// {p.name}\n" + "\n".join(p.read_text().splitlines()[:130]))
     cp = root / gcss
     if cp.exists():
         css = [l for l in cp.read_text().splitlines()

@@ -32,10 +32,13 @@ export default function BeaconCanvas() {
         <div className="label" style={{ color: "var(--accent)" }}>ACTIVE SIGNALS · REGION 4</div>
       </header>
 
-      {/* floating cards overlaid on the canvas */}
+      {/* floating cards overlaid on the canvas — selecting one SPOTLIGHTS it: the rest
+          of the collection demotes in place (fades) rather than disappearing */}
       <section style={{ position: "absolute", right: 48, top: 120, zIndex: 20, display: "flex", flexDirection: "column", gap: 16 }}>
         {SIGNALS.map((s) => (
-          <div key={s.id} onClick={() => setActive(s)}>
+          <div key={s.id} onClick={() => setActive(s)}
+               style={{ opacity: !active || active.id === s.id ? 1 : 0.35,
+                        transition: "opacity 300ms ease" }}>
             <BeaconCard signal={s} />
           </div>
         ))}

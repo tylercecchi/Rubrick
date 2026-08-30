@@ -18,7 +18,8 @@ _F = paths.home() / "learned.json"
 _EMPTY = {"disambiguation_rules": [], "role_exemplars": {},
           "intent_decisions": {}, "rationales": {}, "moment_rules": [],
           "promoted_roles": {}, "promoted_treatments": {}, "promoted_moments": {},
-          "promoted_facets": {}, "discarded": {}, "moment_corrections": {}}
+          "promoted_facets": {}, "discarded": {}, "moment_corrections": {},
+          "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {}}
 
 
 def load() -> dict:
@@ -107,6 +108,30 @@ def record_promoted_facet(facet: str, name: str, description: str) -> None:
 
 def promoted_facets(facet: str) -> dict:
     return load()["promoted_facets"].get(facet, {})
+
+
+# --- promoted interaction patterns (tear-escape for the response-pattern channel) ---
+def record_promoted_pattern(name: str, description: str) -> None:
+    d = load()
+    d["promoted_patterns"][name] = description
+    save(d)
+
+
+def promoted_patterns() -> dict:
+    return load()["promoted_patterns"]
+
+
+# --- locality overrides (designer corrects a generated effect-locality classification) ---
+def record_locality(subject: str, locality: str) -> None:
+    """subject = 'facet:move'; locality = 'element-local' | 'page-global'. Overrides the
+    generated classification (rubrick.scoping) — same pattern as rationales."""
+    d = load()
+    d["locality_overrides"][subject] = locality
+    save(d)
+
+
+def locality_override(subject: str) -> str | None:
+    return load()["locality_overrides"].get(subject)
 
 
 # --- moment corrections (designer fixes a mis-inferred interaction moment) ---

@@ -45,10 +45,13 @@ def gather_ambient_source(root: str, gcss: str, comps: str) -> str:
         except Exception:
             return ""
 
-    # component keyframe bodies + infinite usages
-    comp_kf = grep(["grep", "-rhA5", "@keyframes", str(r / comps)])
+    # component keyframe bodies + infinite usages — across ALL source dirs (an ambient loop
+    # on a page in src/app is as much identity as one in src/components)
+    from rubrick.discover import source_dirs
+    dirs = source_dirs(root, comps) or [str(r / comps)]
+    comp_kf = grep(["grep", "-rhA5", "@keyframes", *dirs])
     comp_inf = grep(["grep", "-rhoE", r"animation:[^,}`]*(infinite|--motion-ring)[^,}`]*",
-                     str(r / comps)])
+                     *dirs])
     comp_kf = "\n".join(comp_kf.splitlines()[:45])
     comp_inf = "\n".join(sorted(set(comp_inf.splitlines()))[:20])
 

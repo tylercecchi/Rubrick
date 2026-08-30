@@ -147,7 +147,8 @@ def compile_product_system(repo: str, name: str,
         save_product_system(ps, str(_path(name)))
         from rubrick.review import emit_review
         review_path = str(SYSTEMS / f"{name}.review.json")
-        n = emit_review(ps, name, review_path)
+        n = emit_review(ps, name, review_path,
+                        repo=repo, globals_css=globals_css, components_dir=components_dir)
         manifest = ps.emit_manifest()
         if n:
             manifest["_review"] = (f"{n} novel move(s) the model found have no vocabulary word yet "

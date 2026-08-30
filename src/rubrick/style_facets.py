@@ -166,20 +166,10 @@ class ColorApplication(BaseModel):
         return {b.role for b in self.bindings if b.kind == kind}
 
 
-def source_dirs(root: str, comps: str) -> list[str]:
-    """Directories to scan for a product's real style usages. Beyond src/components,
-    identity lives in the app shell (src/app — layout/page composition styles) and shared
-    style modules (src/lib, src/styles). Trial #3 had to RELOCATE its shell and palette into
-    src/components to be seen, which is a gate artifact, not a real requirement. Existing,
-    de-duped, deterministic order."""
-    r = pathlib.Path(root)
-    out, seen = [], set()
-    for c in (comps, "src/app", "src/lib", "src/styles", "app", "components", "lib"):
-        p = r / c
-        if p.exists() and str(p) not in seen:
-            seen.add(str(p))
-            out.append(str(p))
-    return out
+# Canonical source discovery lives in rubrick.discover (one choke point for coverage);
+# re-exported here because the gathers below and several sibling modules import it from
+# this module. Trial #3's lesson (identity lives in src/app and src/lib too) is encoded there.
+from rubrick.discover import source_dirs  # noqa: F401  (re-export)
 
 
 def gather_facet_source(root: str, gcss: str, comps: str, facet: str) -> str:
@@ -261,16 +251,14 @@ def content_density(root: str, comps: str) -> float | None:
     each render many rows) separates dense sources (rich products run ~60–110) from sparse builds
     (13-26) even per-component, so it's domain-fair — it demands packed components, not a
     specific data volume."""
-    d = pathlib.Path(root) / comps
-    if not d.exists():
-        return None
-    files = list(d.rglob("*.tsx"))
+    from rubrick.discover import discover_components
+    files = discover_components(root, comps)
     if not files:
         return None
     jsx = maps = 0
     for f in files:
         try:
-            t = f.read_text()
+            t = pathlib.Path(f).read_text()
         except Exception:
             continue
         jsx += len(_JSX_OPEN.findall(t))
