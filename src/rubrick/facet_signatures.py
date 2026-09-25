@@ -120,17 +120,26 @@ def _colored_shadow(s):
 
 
 # --- AMBIENT (perpetual motion) ---
-def _infinite(s):          return _has(s, r"\binfinite\b|iteration-count:\s*infinite")
+# Library-aware: framer-motion loops via repeat: Infinity, GSAP via repeat: -1 —
+# pure additions on tokens CSS-built products don't contain (see detect_treatments).
+def _infinite(s):          return _has(s, r"\binfinite\b|iteration-count:\s*infinite"
+                                          r"|repeat:\s*(?:Infinity|-1)")
 def _perpetual_loop(s):    return _infinite(s)
 def _breathing_pulse(s):
     return _infinite(s) and (_has(s, r"@keyframes[^{]*(?:pulse|breath|glow|throb|beat)")
                              or _has(s, r"animation[^;{}]*(?:pulse|breath|glow|throb)")
                              or (_has(s, r"@keyframes") and _has(s, r"scale\(|opacity")
-                                 and not _has(s, r"rotate\(|background-position")))
+                                 and not _has(s, r"rotate\(|background-position"))
+                             # framer: an animate prop looping scale/opacity keyframe arrays
+                             or (_has(s, r"animate\s*[=:][^\n]*(?:scale|opacity)\s*:\s*\[")
+                                 and not _has(s, r"rotate\s*:")))
 def _rotation_spin(s):
     return _infinite(s) and (_has(s, r"@keyframes[^{]*(?:spin|rotat)")
                              or _has(s, r"animation[^;{}]*(?:spin|rotat)")
-                             or (_has(s, r"@keyframes") and _has(s, r"rotate\(")))
+                             or (_has(s, r"@keyframes") and _has(s, r"rotate\("))
+                             # framer/GSAP: a looping FULL-TURN rotate tween (360 literal or a
+                             # keyframe array ending at 360) — a static rotate: 60 tilt is not a spin
+                             or _has(s, r"rotate\s*:\s*(?:\[[^\]]*360|-?360)|rotation:\s*-?360"))
 def _drift_scroll(s):
     return _infinite(s) and (_has(s, r"@keyframes[^{]*(?:drift|scroll|marquee|pan|ticker)")
                              or _has(s, r"background-position")
@@ -145,7 +154,9 @@ def _physics_loop(s):
     return False
 def _orchestrated_stagger(s):
     delays = set(re.findall(r"animation-delay:\s*(-?[\d.]+m?s)", s))
-    return len(delays) >= 2 or _has(s, r"nth-child[^}]*animation-delay|index\s*\*\s*\d|\bi\s*\*\s*\d+\s*\+?\s*[\"']?m?s|delay.{0,20}index")
+    return len(delays) >= 2 \
+        or _has(s, r"nth-child[^}]*animation-delay|index\s*\*\s*\d|\bi\s*\*\s*\d+\s*\+?\s*[\"']?m?s|delay.{0,20}index") \
+        or _has(s, r"staggerChildren|delayChildren|\bstagger\s*:")  # framer variants / GSAP stagger
 def _ambient_restraint(s):
     if not _infinite(s):
         return False

@@ -25,6 +25,13 @@ _S = re.compile(r"(?<![\d.])(\d*\.?\d+)\s*s\b")
 def _durations_ms(text: str) -> list[float]:
     out = [float(m) for m in _MS.findall(text)]
     out += [float(m) * 1000 for m in _S.findall(text)]
+    # motion-library durations are UNITLESS: framer/GSAP in seconds (duration: 0.4),
+    # anime.js in ms (duration: 400). Disambiguate by magnitude — <=10 can only be seconds
+    # (a 10ms CSS value would carry a unit), larger reads as ms. The (?!\s*m?s) guard keeps
+    # unit-carrying CSS values (animation-duration: 2s / 300ms) on the branches above.
+    for m in re.findall(r"duration\s*[=:]\s*(\d*\.?\d+)(?!\s*m?s)", text):
+        v = float(m)
+        out.append(v * 1000 if v <= 10 else v)
     return [d for d in out if 20 <= d <= 5000]  # plausible transition band
 
 
@@ -63,6 +70,13 @@ def _resolve_consts(source: str) -> str:
 
 # Each signature: name -> (regex-or-callable, human evidence). A callable takes the source
 # and returns True/False for the multi-condition ones.
+#
+# LIBRARY-AWARE branches: much of real React choreography is declared through motion
+# libraries (framer-motion / react-spring / GSAP / lottie), not CSS — AnimatePresence with
+# exit variants IS multi-phase, staggerChildren IS orchestration, type:"spring" IS spring
+# physics. Each library branch is a PURE ADDITION (OR on tokens CSS-built products don't
+# contain), so existing systems' observations are unchanged — a product that never imports
+# these libraries detects exactly as before.
 def _multi_phase(s: str) -> bool:
     # a choreographed exit -> (commit) -> enter: both an exit AND an enter stage, OR >=2
     # sequenced timed stages (chained setTimeout / await sleep), OR >=2 transient phase states.
@@ -70,7 +84,14 @@ def _multi_phase(s: str) -> bool:
     sequenced = len(re.findall(r"setTimeout\(|await\s+sleep\(|await\s+new\s+Promise", s)) >= 2
     phases = len(re.findall(r"\b(?:phase|stage|step)\b\s*[:=]", s, re.I)) >= 2
     transient_states = len(re.findall(r"set(?:Swapping|ScalingIn|Exiting|Entering|Phase|Stage)\(", s)) >= 2
-    return exit_enter or sequenced or phases or transient_states
+    # framer-motion: unmount choreography (AnimatePresence + an exit spec) or a variants
+    # graph with distinct enter/exit poses; GSAP: a timeline sequencing >=2 tweens.
+    presence_exit = _has(s, r"<AnimatePresence") and _has(s, r"\bexit\s*[=:]")
+    variant_stages = _has(s, r"\bvariants\s*[=:]") and \
+        len(re.findall(r"\b(?:initial|animate|exit|enter|hidden|visible|show)\b\s*[=:]", s)) >= 2
+    gsap_timeline = _has(s, r"gsap\.timeline|\btimeline\(\)") and len(re.findall(r"\.(?:to|from|fromTo)\(", s)) >= 2
+    return exit_enter or sequenced or phases or transient_states \
+        or presence_exit or variant_stages or gsap_timeline
 
 
 def _manufactured_latency(s: str) -> bool:
@@ -103,8 +124,13 @@ def _demote_not_remove(s: str) -> bool:
 
 
 def _motion_ack(s: str) -> bool:
-    # the change is animated, not a hard swap: a transition/animation with a real duration.
-    return (_has(s, r"transition:\s*(?!none)") or _has(s, r"animation:\s*(?!none)")) and bool(_durations_ms(s))
+    # the change is animated, not a hard swap: a transition/animation with a real duration —
+    # CSS, or a motion-library animate/tween (framer <motion.*> with a transition prop, a
+    # GSAP/anime tween, a react-spring animated element).
+    css = (_has(s, r"transition:\s*(?!none)") or _has(s, r"animation:\s*(?!none)")) and bool(_durations_ms(s))
+    lib = (_has(s, r"<motion\.") and _has(s, r"\btransition\s*[=:]")) \
+        or _has(s, r"gsap\.(?:to|from|fromTo|timeline)|anime\(\{|<animated\.")
+    return css or lib
 
 
 def _interaction_lock(s: str) -> bool:
@@ -120,14 +146,21 @@ def _interaction_lock(s: str) -> bool:
 
 
 def _reactive_continuous(s: str) -> bool:
-    # continuously tracks pointer/attention with no committed state change.
-    return (_has(s, r"onPointerMove|onMouseMove|mousemove|pointermove")
-            and _has(s, r"transform|translate|--[a-z-]*x|--[a-z-]*y|rotate|style\.setProperty"))
+    # continuously tracks pointer/attention with no committed state change — raw pointer
+    # listeners driving transforms, or the library form: framer motion-values/pan gestures,
+    # @use-gesture handlers bound to springs/transforms.
+    raw = (_has(s, r"onPointerMove|onMouseMove|mousemove|pointermove")
+           and _has(s, r"transform|translate|--[a-z-]*x|--[a-z-]*y|rotate|style\.setProperty"))
+    lib = _has(s, r"useMotionValue|useTransform\(|onPan\s*[=:]|useGesture\(|\buseDrag\(|\buseMove\(")
+    return raw or lib
 
 
 def _spring_physics(s: str) -> bool:
     # custom spring/decay, or an overshoot cubic-bezier (a control point outside [0,1]).
-    if _has(s, r"\b(?:spring|stiffness|damping|useSpring|decay|velocity)\b"):
+    # `spring|stiffness|damping|...` already covers framer's type:"spring" configs and
+    # react-spring; add framer's shorthand bounce/mass params and inertia (momentum) tweens.
+    if _has(s, r"\b(?:spring|stiffness|damping|useSpring|decay|velocity)\b") \
+            or _has(s, r"\btype\s*[=:]\s*[\"']inertia|\bbounce\s*[=:]\s*0?\.\d|\bmass\s*[=:]\s*\d"):
         return True
     for m in re.findall(r"cubic-bezier\(([^)]*)\)", s):
         vals = [float(x) for x in re.findall(r"-?\d*\.?\d+", m)]

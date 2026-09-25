@@ -100,6 +100,47 @@ def _learned_pickup_ok() -> bool:
         detectors._memo["mtime"] = "stale"
 
 
+def _library_signatures_ok() -> bool:
+    """Library-aware detection: framer/GSAP-declared choreography must read as the same
+    dispositions as its CSS twin, and a plain build must stay clean (four-way discipline)."""
+    from rubrick.detect_treatments import detect_timings, detect_treatments
+    from rubrick.facet_signatures import detect_facet_moves
+    framer = ('<AnimatePresence><motion.div variants={v} initial="hidden" animate="visible" '
+              'exit={{ opacity: 0 }} transition={{ duration: 0.45, type: "spring", '
+              'stiffness: 300 }} /></AnimatePresence>')
+    ambient = ('<motion.div animate={{ scale: [1, 1.06, 1] }} '
+               'transition={{ repeat: Infinity, duration: 2.4 }} />')
+    plain = 'const [open, setOpen] = useState(false); <div onClick={() => setOpen(!open)} />'
+    t = detect_treatments(framer)
+    return ({"multi-phase", "motion-ack", "spring-physics"} <= t
+            and detect_timings(framer)["exit_ms"] == 450
+            and "breathing-pulse" in detect_facet_moves("ambient", ambient)
+            and not detect_treatments(plain)
+            and not detect_facet_moves("ambient", plain))
+
+
+def _capability_channel_ok() -> bool:
+    """Capability channel: an imported identity library maps to its class; declared-but-
+    unimported and generic-default libraries never count; the native gate demands the
+    product's actual runtime while posture never gates on it (no posture check exists)."""
+    import json as _json
+    import pathlib as _pl
+    import tempfile
+    from rubrick.capabilities import check_native_capabilities, detect_capabilities
+    repo = _pl.Path(tempfile.mkdtemp())
+    (repo / "src/components").mkdir(parents=True)
+    (repo / "package.json").write_text(_json.dumps(
+        {"dependencies": {"framer-motion": "^11", "lodash": "^4", "recharts": "^2"}}))
+    (repo / "src/components/Hero.tsx").write_text(
+        'import { motion } from "framer-motion";\nimport _ from "lodash";\n<motion.div />')
+    caps = detect_capabilities(str(repo), "src/components")
+    generic_caps = detect_capabilities(str(_FIX / "rubrick-generic"), _COMPS)
+    gate = check_native_capabilities(caps, [])
+    return ([c["class"] for c in caps] == ["physics-motion-runtime"]
+            and generic_caps == []
+            and len(gate) == 1 and "physics-motion-runtime" in gate[0])
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -169,6 +210,13 @@ def run() -> bool:
           _detector_mechanics_ok())
     check("an active learned detector gates; a rejected one never does",
           _learned_pickup_ok())
+    # LIBRARY-AWARE DETECTION + CAPABILITY CHANNEL (the anti-flatness pair): motion-library
+    # choreography reads as the same dispositions as CSS, and the identity's runtime
+    # capability classes are detected, instructed, and native-gated.
+    check("library-declared choreography detects (framer/GSAP); plain stays clean",
+          _library_signatures_ok())
+    check("capability channel: imported identity libs map to classes; native gate fires",
+          _capability_channel_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

@@ -64,7 +64,8 @@ exists, so a stable FAIL on an honest build still means: suspect the detector fi
 | **typography** | **hybrid** — 6 mechanical moves by signature; `detailed-face` + the faces stay LLM | `_type_moves` + `hybrid_type_obs` |
 | **color** — moves *and* application (marking vs. decoration) | **LLM** | `extract_facet("color", …)`, `extract_color_application` |
 | **native face→role** (Calibre-is-the-body-voice) | deterministic | `capture_face_roles` |
-| **behavior** treatments + timings | deterministic | `detect_treatments`, `detect_timings` |
+| **behavior** treatments + timings (CSS **and** motion-library idioms) | deterministic | `detect_treatments`, `detect_timings` |
+| **capabilities** (runtime classes the identity rides on) | deterministic | `capabilities.detect_capabilities` |
 | **interaction patterns** (carousel, staged disclosure, pointer drawing, spotlight) | deterministic | `components.detect_patterns` |
 | **effect locality** (which moves get a deployment frequency) | **LLM** (generated once per vocab word, cached, designer-overridable) | `scoping.move_locality` |
 | **surface** material stack (sheen/lighting/texture/bevel) | deterministic | `extract_focal_surface` |
@@ -160,6 +161,33 @@ is the thing to fix.
 > When a build agent honestly reports a stable conformance FAIL it can't clear without gaming the
 > signature, suspect the **detector** (a false-negative) before the build — investigate the signature
 > first, run the four-way check, and generalize it if it's overfit.
+
+## Library-aware detection & the capability channel (anti-flatness)
+
+Real React choreography is often declared through motion libraries, not CSS — and a detector
+layer that only reads CSS compiles those products **flat**, so consuming agents build flat.
+Two mechanisms close this:
+
+**Library-aware signature branches.** `AnimatePresence` + an exit spec IS multi-phase; a
+`variants` graph with distinct poses IS multi-phase; `staggerChildren`/GSAP `stagger:` IS
+orchestrated-stagger; `type:"spring"`/`stiffness`/`bounce` IS spring-physics; `repeat: Infinity`
+/`repeat: -1` IS an infinite loop; unitless `duration: 0.45` (framer/GSAP seconds, anime ms —
+disambiguated by magnitude) feeds `detect_timings`. Every branch is a **pure addition** — an OR on
+tokens CSS-built products don't contain — so systems compiled before these branches existed remain
+exactly self-conformant, no recompile required. The richness ranker counts the same markers, so a
+framer-heavy component ranks into the extraction budget like its CSS twin.
+
+**The capability channel** (`capabilities.py`). The *library name* is implementation (posture mode
+abstracts it, like fonts); the *capability class* the identity rides on is disposition-level fact:
+physics-motion-runtime, timeline-choreography, vector-animation, 3d-scene, 2d-canvas-engine,
+expressive-dataviz. Detection is deterministic (package.json deps × actual import specifiers on
+the shared discovery list; a declared-never-imported dependency doesn't count, and generic-default
+libraries aren't classes at all). Emission is two-tier, matching posture/native:
+- **POSTURE — instructed, never gated**: `CAPABILITY/…` checklist lines + a
+  `capability_requirements` guide block tell the agent the no-dependency approximation is wrong
+  here; a build that hand-rolls the capability conforms via the treatment checks.
+- **NATIVE — gated** (`check_native_capabilities`, reported as `native:capabilities`): the feature
+  must ride the product's *actual* runtime per class — same logic as the typeface anchors.
 
 ## What the detectors *cannot* see (the honest ceiling)
 

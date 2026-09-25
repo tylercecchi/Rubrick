@@ -90,6 +90,14 @@ OBSERVE ─▶ SALIENCE ─▶ ELICIT ─▶ LIFT ─▶ COMPILE ─▶ GENERATE
   over-application — the symmetric ceiling to the magnitude floors. A build that applies every
   captured move everywhere reads as noise, not identity, and now fails for it.
 
+- **Capabilities, not libraries.** The tech stack itself is implementation (posture mode abstracts
+  it, like fonts) — but the *capability class* an identity rides on is captured: physics-driven
+  motion, timeline choreography, a real-time 3D/canvas focal surface, bespoke data graphics. The
+  detectors read motion-library idioms (framer-motion, GSAP, react-spring…) as the same
+  dispositions as their CSS equivalents, and the manifest tells the consuming agent up front that
+  the no-dependency flat approximation is non-conforming — instructed in posture (any equivalent
+  runtime, or hand-rolled), gated in native (reuse the product's actual libraries, like its faces).
+
 - **Interaction patterns are captured structurally.** Beyond choreography (timings, phases,
   symmetry), the tool detects what an interaction *is* — a carousel's sequential traversal,
   progressive disclosure, pointer drawing on a canvas, select-one-spotlight-the-rest — as

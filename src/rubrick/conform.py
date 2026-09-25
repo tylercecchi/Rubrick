@@ -228,6 +228,15 @@ def check_conformance(candidate_repo: str, gcss: str, comps: str, key: str, ps,
             v = v + sr.check_prevalence(cand_prev.get(sr.facet, {}))
         report[sr.facet] = {"conforms": not v, "violations": v}
 
+    if native and getattr(ps, "capabilities", None):
+        # NATIVE-only: the feature must ride the product's actual runtime per capability
+        # class (same logic as the typeface anchors). Posture never gates on dependencies —
+        # there the capabilities are instruction (_guide / checklist), and the treatment
+        # checks remain the gate.
+        from rubrick.capabilities import check_native_capabilities, detect_capabilities
+        v = check_native_capabilities(ps.capabilities, detect_capabilities(candidate_repo, comps))
+        report["native:capabilities"] = {"conforms": not v, "violations": v}
+
     if native:
         for sr in ps.styles:
             if not sr.concrete.get("anchors"):

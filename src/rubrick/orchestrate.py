@@ -130,6 +130,10 @@ def _interaction_richness(gathered: str) -> int:
     score += 3 * len(re.findall(r"setTimeout|requestAnimationFrame|\bphase\b|\bstage\b|\bstep\b", s, re.I))  # multi-phase
     score += 3 * len(re.findall(r"pointerEvents|setPointerCapture|pointer-events", s))  # interaction-lock
     score += len(re.findall(r"\btransform\b|translate|scale\(|rotate", s))            # spatial motion
+    # motion-library choreography — a framer/GSAP/react-spring component IS choreographed
+    # even with zero CSS, and must rank into the extraction budget like its CSS twin
+    score += 2 * len(re.findall(r"<motion\.|<animated\.|AnimatePresence|\bvariants\s*[=:]|"
+                                r"useMotionValue|useSpring|useTransform\(|gsap\.|staggerChildren", s))
     from rubrick.components import detect_patterns
     score += 4 * len(detect_patterns(s))  # a quiet-but-structural pattern must still rank
     return score
@@ -425,9 +429,20 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     except Exception as e:
         log.append(f"facet novelty survey: SKIPPED ({type(e).__name__}: {e})")
 
+    # --- capabilities: the runtime classes the identity rides on (deterministic) ---
+    capabilities: list[dict] = []
+    try:
+        from rubrick.capabilities import detect_capabilities
+        capabilities = detect_capabilities(repo, comps)
+        for c in capabilities:
+            log.append(f"capability: {c['class']} via {c['libraries']} ({c['evidence']})")
+    except Exception as e:
+        log.append(f"capabilities: SKIPPED ({type(e).__name__}: {e})")
+
     ps = ProductSystem(dispositions=dispositions, surfaces=surfaces, rules=rules,
                        styles=styles, composition=composition, components=components,
-                       subtractions=subtractions, observed_patterns=observed_patterns)
+                       subtractions=subtractions, observed_patterns=observed_patterns,
+                       capabilities=capabilities)
     ps._log = log  # type: ignore[attr-defined]
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []

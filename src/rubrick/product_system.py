@@ -581,6 +581,10 @@ class ProductSystem:
     # observation): instructed via the checklist, verified only once a detector is
     # admitted — the middle stage of seen -> instructed -> gated.
     observed_patterns: list = field(default_factory=list)
+    # runtime capability classes the identity depends on (rubrick.capabilities):
+    # INSTRUCTED in posture (never gated — hand-rolling the capability conforms via the
+    # treatment checks), GATED in native like the typeface anchors.
+    capabilities: list = field(default_factory=list)
 
     def surface_for(self, role: str):
         return next((s for s in self.surfaces if s.applies_to == role), None)
@@ -626,6 +630,7 @@ class ProductSystem:
             "components": [c.emit() for c in self.components],
             "subtractions": self.subtractions,
             "observed_patterns": self.observed_patterns,
+            "capabilities": self.capabilities,
         }
         m["_checklist"] = self._checklist()
         m["_guide"] = self._guide()
@@ -648,6 +653,13 @@ class ProductSystem:
         facet moves. check_conformance gates all of these. Each line carries the disposition
         WHY so the agent builds to the principle, not just to pass the check."""
         items = []
+        for cap in self.capabilities:
+            from rubrick.capabilities import CAPABILITY_INSTRUCTIONS
+            items.append(f"CAPABILITY/{cap['class']} — {CAPABILITY_INSTRUCTIONS.get(cap['class'], cap['class'])}. "
+                         f"The source builds this on {cap['libraries']} — in POSTURE mode use any "
+                         f"equivalent runtime (or hand-roll it; the treatment checks are the gate, "
+                         f"not the dependency); in NATIVE mode reuse the actual libraries. Do NOT "
+                         f"substitute the no-dependency flat approximation.")
         if self.composition:
             items.append(f"COMPOSITION — organize around a {self.composition.archetype} spine."
                          + self._why(self.composition.disposition))
@@ -706,6 +718,22 @@ class ProductSystem:
         return items
 
     def _guide(self) -> dict:
+        g = self._guide_base()
+        if self.capabilities:
+            from rubrick.capabilities import CAPABILITY_INSTRUCTIONS
+            g["capability_requirements"] = {
+                "note": ("This identity DEPENDS on the runtime capabilities below — agents "
+                         "default to the least-dependency path, and that default is wrong here: "
+                         "the no-library approximation is what makes builds come out flat. "
+                         "Advisory in posture mode (an honest equivalent or hand-rolled runtime "
+                         "conforms); checked in native mode."),
+                **{c["class"]: f"{CAPABILITY_INSTRUCTIONS.get(c['class'], c['class'])} "
+                               f"(source: {', '.join(c['libraries'])})"
+                   for c in self.capabilities},
+            }
+        return g
+
+    def _guide_base(self) -> dict:
         """Standing build guidance — the levers the GATE cannot enforce, so they must be
         INSTRUCTED. The checklist says WHAT to build and WHY; this says HOW to build it well
         and how to read the gate. Everything here is product-agnostic on purpose: it heads off
@@ -797,4 +825,5 @@ def load_product_system(path: str) -> ProductSystem:
     return ProductSystem(dispositions=disps, surfaces=surfaces, rules=rules, styles=styles,
                          composition=composition, components=components,
                          subtractions=m.get("subtractions", []),
-                         observed_patterns=m.get("observed_patterns", []))
+                         observed_patterns=m.get("observed_patterns", []),
+                         capabilities=m.get("capabilities", []))
