@@ -82,6 +82,18 @@ OBSERVE ─▶ SALIENCE ─▶ ELICIT ─▶ LIFT ─▶ COMPILE ─▶ GENERATE
   build. Until then the word is instructed in the checklist but unverified. The hand-written
   signatures are the seed corpus, not the ceiling.
 
+- **Omission is part of the delta too.** What a product deliberately leaves out — no shadows, no
+  toasts, no confirm dialogs, status as text instead of badges — is identity, and an additive-only
+  reader can't tell a refusal from an oversight. Every omission — built-in or discovered — is one
+  kind of thing: an absence detector (a pattern, or a deterministic *measurement* for amount-based
+  omissions like "one hue family"), captured only when the product lacks it **and** a generated
+  *generic twin* of the product has it. When the twin lacks it too, it's a question, not a rule: the
+  designer confirms it. The twin is generated from what the product is *for* (its jobs), never its
+  structure — a substitute like an undo row *is* structure, and a twin that copies it can't see the
+  confirm dialog it replaced. Beyond the known detectors, a survey diffs the product's code against
+  the twin's (recording what it does *instead*, and any sign the gap is an accident), and promoted
+  absences earn detectors with inverted admission. A build that adds an omitted thing back fails.
+
 - **Deployment frequency is part of the delta.** *Where* a move is deployed is itself identity: a
   product that reserves its metal texture for the focal object made a restraint decision.
   Element-local moves (textures, glows, loops, display type — classified by generated

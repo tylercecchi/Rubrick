@@ -141,6 +141,205 @@ def _capability_channel_ok() -> bool:
             and len(gate) == 1 and "physics-motion-runtime" in gate[0])
 
 
+def _absence_admission_ok() -> bool:
+    """The SUBTRACTIVE gate's inverted admission: a presence detector for an omission
+    must NOT match the product that omits it and MUST match every generic exemplar."""
+    from rubrick.detectors import admit_absence
+    from rubrick.facet_signatures import raw_source
+    rest = raw_source(*PRODUCTS["Restrained"], _COMPS)  # no icons anywhere
+    ex = ['import { Check } from "lucide-react"; <Check size={16} />',
+          '<FontAwesomeIcon icon={faCheck} />']
+    nm = ['<img src="/logo.png" alt="Acme" width={24} />']  # an image, not an icon set
+    good = {"all": [r"lucide-react|react-icons|@heroicons|FontAwesomeIcon|<svg"], "none": []}
+    narrow = {"all": [r"lucide-react"], "none": []}       # misses an honest spelling
+    loose = {"all": [r"<div"], "none": []}                # fires on the product itself
+    # the status-badge gap: a SHAPE-only spec matches pill exemplars but also the avatar
+    b_ex = ['<span className="rounded-full bg-green-100 px-2 text-xs">Active</span>',
+            '<span className="rounded-full bg-blue-50 px-2 py-0.5">New</span>']
+    b_nm = ['<img className="rounded-full w-8 h-8" src={user.avatar} />']
+    shape = {"all": [r"rounded-full|border-radius:\s*9999px"], "none": []}
+    return (admit_absence(good, rest, ex, nm) is None
+            and "generic exemplar" in (admit_absence(narrow, rest, ex, nm) or "")
+            and "calibration product" in (admit_absence(loose, rest, ex, nm) or "")
+            and "no generic exemplar" in (admit_absence(good, rest, [], nm) or "")
+            and "near-miss probe" in (admit_absence(good, rest, ex, []) or "")
+            and "fires on near-miss" in (admit_absence(shape, rest, b_ex, b_nm) or "")
+            and _element_scope_ok())
+
+
+def _element_scope_ok() -> bool:
+    """scope='element': a badge spec (fill + tight padding + small text) fires only when
+    the traits share ONE element — three unrelated elements must not jointly fire it,
+    which for an absence detector would wrongly FAIL an honest build."""
+    from rubrick.detectors import run_spec
+    badge = {"all": [r"background\s*:|\bbg-\w+-\d", r"padding\s*:\s*['\"]?[0-4]px|\bpx-[12]\b",
+                     r"font-?size\s*:\s*1[0-3]|\btext-xs\b"], "none": [], "scope": "element",
+             "flags": "i"}
+    scattered = ('<div style={{ background: "#111", padding: 16 }}>'
+                 '<i style={{ padding: "2px" }} /><p style={{ fontSize: 12 }}>x</p></div>')
+    chip = '<span style={{ background: "#e6f4ea", padding: "2px 6px", fontSize: 12 }}>Ok</span>'
+    css_split = ".tag { background: #eef; padding: 2px 8px; }\n.note { font-size: 12px }"
+    css_one = ".tag { background: #eef; padding: 2px 8px; font-size: 12px }"
+    whole = dict(badge, scope="source")
+    return (not run_spec(badge, scattered) and run_spec(whole, scattered)
+            and run_spec(badge, chip)
+            and run_spec(badge, '<span onClick={() => go()} className="bg-red-100 px-2 text-xs">!</span>')
+            and not run_spec(badge, css_split) and run_spec(badge, css_one))
+
+
+def _twin(files: dict) -> tuple:
+    """A hand-written stand-in for a generated generic twin (eval only — the real twin is
+    a model generation; here we need a FIXED baseline to test the capture rule)."""
+    import pathlib as _pl
+    import tempfile
+    root = _pl.Path(tempfile.mkdtemp(prefix="rubrick-twin-"))
+    for rel, text in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text)
+    return (str(root), "src/app/globals.css", _COMPS)
+
+
+def _learned_absence_gate_ok() -> bool:
+    """ONE capture rule for every absence (built-in or learned): captured when the product
+    zeroes it AND the generic twin has it; uncertain when the twin lacks it too. A captured
+    learned absence gates add-back LLM-free and survives the manifest round-trip; a revoked
+    built-in leaves the registry. Temp learned store; the real one is untouched."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import detectors, learned
+    from rubrick.product_system import ProductSystem
+    from rubrick.subtractions import check_subtractions, classify, registry
+    spec = {"all": [r"\btoast\b|Toaster|enqueueSnackbar"], "none": []}
+    rrepo, rg = PRODUCTS["Restrained"]
+    twin_has = _twin({"src/app/globals.css": ".card { box-shadow: 0 4px 24px rgba(0,0,0,.2) }",
+                      "src/components/Save.tsx": 'import { toast } from "sonner"; toast("Saved")'})
+    twin_lacks = _twin({"src/app/globals.css": "body { margin: 0 }",
+                        "src/components/P.tsx": "export const P = () => <p>hi</p>"})
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    detectors._memo["mtime"] = "stale"
+    try:
+        learned.record_promoted_absence("toast-notifications", "inline status instead of toasts")
+        detectors.record_detector("absence", "toast-notifications", spec, "active", "eval")
+        r = classify(rrepo, rg, _COMPS, twin_has, designed=True)
+        cap = {x["omits"] for x in r["captured"]}
+        unc = {x["omits"] for x in r["uncertain"]}
+        captured = {"toast-notifications", "elevation-shadow"} <= cap and "flat-color" in unc
+        r2 = classify(rrepo, rg, _COMPS, twin_lacks, designed=True)
+        no_delta = not r2["captured"] and "toast-notifications" in {x["omits"] for x in r2["uncertain"]}
+        not_designed = classify(rrepo, rg, _COMPS, twin_has, designed=False)["captured"] == []
+        toast = next(x for x in r["captured"] if x["omits"] == "toast-notifications")
+        cand = _twin({"src/components/Save.tsx": 'import { toast } from "sonner";\ntoast("Saved")'})
+        fires = bool(check_subtractions([toast], *cand))
+        clean = not check_subtractions(r["captured"], rrepo, rg, _COMPS)
+        m = ProductSystem(dispositions={}, subtractions=[toast]).emit_manifest()
+        roundtrip = m["subtractions"][0]["detector"] == spec and "omission_is_identity" in m["_guide"]
+        detectors.record_detector("absence", "flat-color", None, "revoked", "eval")
+        revoked = "flat-color" not in registry() and "single-hue" in registry()
+        return captured and no_delta and not_designed and fires and clean and roundtrip and revoked
+    finally:
+        learned._F = orig
+        detectors._memo["mtime"] = "stale"
+
+
+def _measure_absence_ok() -> bool:
+    """Amount-based omissions: a MEASURE detector is admitted by reading (calibration
+    zeroed, generic exemplars not), and pre-unification manifests (built-ins stored by
+    name only) still gate."""
+    from rubrick.detectors import admit_absence
+    from rubrick.subtractions import check_subtractions
+    rrepo, rg = PRODUCTS["Restrained"]
+    cal = (rrepo, rg, _COMPS)
+    ex = [".btn { transition: background 0.2s ease }", '<div className="transition-all duration-200" />']
+    good = {"measure": "has_transition", "zeroed": "false", "added": "true"}
+    one_face = {"measure": "font_families", "zeroed": "== 1", "added": ">= 2"}
+    bad_measure = {"measure": "vibes", "zeroed": "false", "added": "true"}
+    legacy = [{"omits": "flat-color", "note": "FLAT-COLOR — solid fills only, no gradients"}]
+    grad = _twin({"src/app/globals.css": ".hero { background: linear-gradient(#f00, #00f) }"})
+    return (admit_absence(good, "", ex, [], cal) is None
+            and "still 'zeroed'" in (admit_absence(one_face, "", ex, [], cal) or "")
+            and "unknown measure" in (admit_absence(bad_measure, "", ex, [], cal) or "")
+            and "calibration repo" in (admit_absence(good, "", ex, [], None) or "")
+            and bool(check_subtractions(legacy, *grad))
+            and not check_subtractions(legacy, rrepo, rg, _COMPS))
+
+def _survey_triage_ok() -> bool:
+    """The survey's DETERMINISTIC half: an ungrounded host is dropped (inapplicable), an
+    unsystematic or known/discarded one never surfaces, confidence follows substitute vs
+    counter-evidence, findings rank high -> low, and the jobs scrub strips the product's
+    component names without eating its domain nouns."""
+    from rubrick.absences import AbsenceSighting, AbsenceSurvey, scrub, triage
+    src = "export function TaskRow() {}\nexport function UndoRow() {}\n.row { color: red }"
+    def s(name, host, instead="", against="", systematic=True):
+        return AbsenceSighting(name=name, category="feedback", twin_evidence=f"<{name} />",
+                               host=host, evidence="absent", instead=instead,
+                               against=against, systematic=systematic)
+    survey = AbsenceSurvey(deliberate=[
+        s("hover-lift", "TaskRow", against="--row-hover defined, never used"),
+        s("confirm-dialog", "TaskRow delete action", instead="undo"),
+        s("user-avatar", "ProfileHeader"),                       # host doesn't exist
+        s("tooltip", "TaskRow", systematic=False),
+        s("elevation-shadow", "TaskRow"),                        # known (registry)
+        s("toast", "UndoRow", instead="inline text", against="half-wired"),
+    ])
+    keep, dropped = triage(survey, src, {"elevation-shadow"}, set())
+    order = [(k["name"], k["confidence"]) for k in keep]
+    return (order == [("confirm-dialog", "high"), ("toast", "medium"), ("hover-lift", "low")]
+            and any("user-avatar" in d and "inapplicable" in d for d in dropped)
+            and any("tooltip" in d for d in dropped)
+            and keep[0]["exemplars"] == ["<confirm-dialog />"]
+            and scrub("restore a task via the UndoRow banner", {"UndoRow", "Undo", "Row"})
+                == "restore a task via the banner"
+            and scrub("add a task", {"UndoRow", "Undo", "Row"}) == "add a task")
+
+
+def _baseline_logic_ok() -> bool:
+    """The twin-baseline logic, deterministically: majority vote across twins (captured vs
+    uncertain), the purpose-level gesture check (a gesture most twins use for the same
+    purpose demotes a gesture-only component to review; one they don't use stays; feel
+    still counts), designer job overrides, library drag idioms, and host grounding."""
+    from rubrick.absences import apply_job_overrides, gesture_defaults, host_grounded, still_identity
+    from rubrick.components import detect_gesture
+    from rubrick.subtractions import classify
+    rrepo, rg = PRODUCTS["Restrained"]
+    shadow = _twin({"src/app/globals.css": ".c { box-shadow: 0 4px 24px rgba(0,0,0,.2) }"})
+    flat = _twin({"src/app/globals.css": ".c { border: 1px solid #ddd }"})
+    def fate(twins, name="elevation-shadow"):
+        r = classify(rrepo, rg, _COMPS, twins, designed=True)
+        return ("captured" if name in {x["omits"] for x in r["captured"]} else
+                "uncertain" if name in {x["omits"] for x in r["uncertain"]} else None)
+    vote = (fate([shadow, shadow, flat]) == "captured" and fate([shadow, flat, flat]) == "uncertain"
+            and classify(rrepo, rg, _COMPS, [shadow, shadow, flat], designed=True)["representative"] == 0)
+    native = '<div draggable onDragStart={s} />'
+    pangea = 'import { DragDropContext, Draggable } from "@hello-pangea/dnd";'
+    dndkit = 'const { attributes } = useSortable({ id });'
+    plain = 'const [draft, setDraft] = useState(""); <button onClick={add}>Add</button>'
+    drag_sig = {"role": "board", "gesture": "drag", "patterns": set(),
+                "material_roles": set(), "treatments": set()}
+    feel_sig = {**drag_sig, "treatments": {"spring-physics", "multi-phase", "motion-ack"}}
+    d3 = gesture_defaults(drag_sig, [[plain, native], [pangea], [dndkit]])   # 3/3 drag
+    d1 = gesture_defaults(drag_sig, [[plain], [plain], [native]])             # 1/3
+    gesture = (d3["gesture"] and not still_identity(drag_sig, d3)            # -> review
+               and not d1["gesture"]                                         # -> kept
+               and still_identity(feel_sig, d3)                              # feel still counts
+               and detect_gesture(pangea) == "drag" and detect_gesture(dndkit) == "drag"
+               and detect_gesture(plain) == "click")
+    jobs = apply_job_overrides([("restore a removed task", "recover from a mistaken removal"),
+                                ("add a task", "add a task"), ("replay history", "see history")],
+                               {"restore a removed task": "STRIKE", "replay history": "audit changes"})
+    hosts = (host_grounded(".row list item", ".row { padding: 0 }")
+             and not host_grounded("ProfileHeader avatar", ".row { padding: 0 }")
+             and not host_grounded("row", ".arrow { x: 1 }"))
+    from rubrick.absences import _JobsDelta, apply_jobs_delta
+    prev = {"product_kind": "a kanban board", "jobs": ["add a task", "move a task"], "content": []}
+    same = apply_jobs_delta(prev, [_JobsDelta()]) == prev                    # no change -> verbatim
+    one = apply_jobs_delta(prev, [_JobsDelta(remove_jobs=["Add a task"], add_jobs=["archive a task"])])
+    split = apply_jobs_delta(prev, [_JobsDelta(remove_jobs=["add a task"]), _JobsDelta()])
+    sticky = (same and one["jobs"] == ["move a task", "archive a task"]
+              and split["jobs"] == prev["jobs"])  # a removal needs every chunk to agree
+    return vote and gesture and jobs == ["add a task", "audit changes"] and hosts and sticky
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -217,6 +416,19 @@ def run() -> bool:
           _library_signatures_ok())
     check("capability channel: imported identity libs map to classes; native gate fires",
           _capability_channel_ok())
+
+    # OPEN SUBTRACTIVE CHANNEL: omission is seen/gated as openly as addition — learned
+    # presence detectors with inverted admission, captured only as a diff vs the baseline.
+    check("absence admission: rejects product-matching, exemplar-missing, near-miss-firing",
+          _absence_admission_ok())
+    check("one capture rule vs the generic twin: captured / uncertain / revocable / gates",
+          _learned_absence_gate_ok())
+    check("measure-based absences admit by reading; legacy manifests still gate",
+          _measure_absence_ok())
+    check("survey triage: inapplicable/unsystematic dropped, confidence-ranked, scrub safe",
+          _survey_triage_ok())
+    check("twin baseline: majority vote, purpose-level gesture check, job overrides",
+          _baseline_logic_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok
