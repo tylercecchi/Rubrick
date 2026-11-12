@@ -20,4 +20,17 @@ be deleted out from under it. They span the differentiation spectrum:
   scores ~0% against every product's system, proving captured identity is *differentiated from
   generic*, not universal noise. ~1 record.
 
+- **`rubrick-omissions/`** — a small task list with **planted deliberate omissions** (confirm
+  dialogs, icons, count badges, toasts, spinners — each with a visible substitute) and **decoys** (defaults
+  it does have, an unfinished-looking hover token, features with nothing to host them). The answer key
+  is `ANSWERS.json`, outside `src/` so discovery never reads it; the source carries no intent
+  comments. Not in the regression guard — it *measures* the open absence survey via
+  `tests/probe_absence_survey.py`.
+
+- **`rubrick-gestural/`** — a kanban board whose drag-between-columns is the **category default**
+  (must go to review, not be auto-captured) and whose drag-to-scrub history track is the **signature
+  gesture** (must be captured); its jobs are phrased so a mechanism could leak into the twin. Key in
+  `ANSWERS.json`; measured by `tests/probe_gestural.py`. Both labeled fixtures also feed
+  `tests/probe_stability.py` (decision flips under edits with no design meaning).
+
 They're small and are **read, never built**. See `DETECTORS.md` for what the detectors capture.
