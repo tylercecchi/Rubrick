@@ -19,7 +19,8 @@ _EMPTY = {"disambiguation_rules": [], "role_exemplars": {},
           "intent_decisions": {}, "rationales": {}, "moment_rules": [],
           "promoted_roles": {}, "promoted_treatments": {}, "promoted_moments": {},
           "promoted_facets": {}, "discarded": {}, "moment_corrections": {},
-          "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {}}
+          "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {},
+          "promoted_absences": {}, "job_overrides": {}}
 
 
 def load() -> dict:
@@ -119,6 +120,26 @@ def record_promoted_pattern(name: str, description: str) -> None:
 
 def promoted_patterns() -> dict:
     return load()["promoted_patterns"]
+
+
+# --- promoted absences (the open subtractive channel: a deliberate omission -> vocab) ---
+def record_promoted_absence(name: str, description: str) -> None:
+    d = load()
+    d["promoted_absences"][name] = description
+    save(d)
+
+
+def promoted_absences() -> dict:
+    return load()["promoted_absences"]
+
+
+# --- job overrides (designer corrects the twin's jobs, per product repo) ---
+def record_job_override(repo_key: str, original: str, value: str) -> None:
+    """value = 'STRIKE' (drop the job) or replacement text. Keyed per product: a job
+    that is a design choice in one product is a core need in another."""
+    d = load()
+    d["job_overrides"].setdefault(repo_key, {})[original.strip().lower()] = value
+    save(d)
 
 
 # --- locality overrides (designer corrects a generated effect-locality classification) ---
