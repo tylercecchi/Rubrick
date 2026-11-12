@@ -585,6 +585,9 @@ class ProductSystem:
     # INSTRUCTED in posture (never gated — hand-rolling the capability conforms via the
     # treatment checks), GATED in native like the typeface anchors.
     capabilities: list = field(default_factory=list)
+    # promoted-but-not-yet-gated deliberate OMISSIONS this product maintains (the open
+    # subtractive channel, rubrick.absences): instructed, verified once a detector is admitted.
+    observed_absences: list = field(default_factory=list)
 
     def surface_for(self, role: str):
         return next((s for s in self.surfaces if s.applies_to == role), None)
@@ -631,6 +634,7 @@ class ProductSystem:
             "subtractions": self.subtractions,
             "observed_patterns": self.observed_patterns,
             "capabilities": self.capabilities,
+            "observed_absences": self.observed_absences,
         }
         m["_checklist"] = self._checklist()
         m["_guide"] = self._guide()
@@ -708,6 +712,11 @@ class ProductSystem:
         for s in self.subtractions:
             items.append(f"SUBTRACTION — the product is {s['note']}. Do NOT add it back; this "
                          f"identity is defined by its ABSENCE (adding it is a violation by excess).")
+        for oa in self.observed_absences:
+            what = f": {oa['note']}" if oa.get("note") else ""
+            items.append(f"SUBTRACTION/{oa['name']} (unverified) — the product deliberately "
+                         f"omits {oa['name']}{what}. Do NOT add it back. The gate cannot verify "
+                         f"this omission yet — keeping it out is yours to own by hand.")
         for op in self.observed_patterns:
             from rubrick.components import pattern_description
             where = f" (seen in {op['component']})" if op.get("component") else ""
@@ -748,6 +757,13 @@ class ProductSystem:
                 "element destroys the figure/ground contrast that makes it read as identity; the "
                 "build goes noisy and one-dimensional, and the gate flags clear over-application. "
                 "Match the deployment pattern, not just the move."
+            ),
+            "omission_is_identity": (
+                "What the product LEAVES OUT is as binding as what it adds. Agents reach for "
+                "their defaults — shadows, icons, toasts, spinners, confirm dialogs, hover lifts "
+                "— and each one quietly erodes an identity built on refusing it. Every "
+                "SUBTRACTION on the checklist is a requirement, not a gap to fill; if a need "
+                "seems to demand the omitted thing, use the product's substitute instead."
             ),
             "build_to_the_why": (
                 "The checklist's WHY clauses are the product's dispositions — its soul. Build to "
@@ -826,4 +842,5 @@ def load_product_system(path: str) -> ProductSystem:
                          composition=composition, components=components,
                          subtractions=m.get("subtractions", []),
                          observed_patterns=m.get("observed_patterns", []),
-                         capabilities=m.get("capabilities", []))
+                         capabilities=m.get("capabilities", []),
+                         observed_absences=m.get("observed_absences", []))

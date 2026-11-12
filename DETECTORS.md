@@ -71,7 +71,8 @@ exists, so a stable FAIL on an honest build still means: suspect the detector fi
 | **surface** material stack (sheen/lighting/texture/bevel) | deterministic | `extract_focal_surface` |
 | **magnitude** metrics (scale-contrast, weight, chroma, shadow depth, spacing, content-density) | deterministic (regex) | `type_extract`, `style_facets` |
 | **discipline** metrics (`spacing_discipline`, `palette_coherence`) | deterministic | `style_facets` |
-| **subtractions** (identity by omission) | deterministic | `detect_subtractions` |
+| **absences** — capture: registry (built-in + learned) vs a generated generic twin | deterministic reading; twin is generated | `subtractions.classify` |
+| **absences** — open omission survey: product code vs generic-twin code | **LLM** to see (deterministic triage); learned detectors to gate | `absences.observe_absences` |
 | **composition** archetype + focal anchor | **LLM** | `infer_composition` |
 | **dispositions** (the "why") | **LLM** (generated, then optionally designer-refined) | `orchestrate.generate_disposition` |
 
@@ -100,6 +101,119 @@ fully-semantic facet (`TYPOGRAPHY_SEMANTIC = {"detailed-face"}` is the only LLM 
 
 The vocabulary is **open**: a compile can surface a novel move the vocab has no word for (a
 "tear-escape"), which a designer promotes via the human loop (`learned.json`). See the README.
+
+## Absences — one mechanism for every omission
+
+Omission is identity as much as addition, so it gets the same open → closed trajectory — and there
+are no privileged "seeds". An **absence detector** is data in one of two forms: a *pattern* spec
+(as above, presence = match) or a *measure* spec `{"measure", "zeroed", "added"}` over a closed set
+of deterministic primitives (`subtractions.MEASURES`: shadow blur, hue families, typefaces, font
+weights, radius, gradients, ambient motion, transitions…) for omissions about **amount**, which a
+regex can't express. The gap between `zeroed` and `added` prevents borderline flip-flop.
+
+The **registry** (`subtractions.registry`) = seven built-in starter entries (`BUILTINS`) + every
+active learned `absence:*` detector; a learned entry overrides a built-in of the same name, or
+revokes it with status `revoked`. Every entry is captured by **one rule** against the **generic
+twin** — an undirected full build generated from the product's **jobs**, not its structure
+(`absences.extract_jobs` → `generate_twin`), materialized with the product's layout so every reading
+runs on it through the same code. Jobs, not structure, because **a substitute *is* structure**: a
+twin built from file names like `UndoRow.tsx`/`SyncStatus.tsx` rebuilds the product's own
+substitutes and goes blind to what it refused (measured: 0/5 on the omissions fixture). Jobs are
+verbs on domain objects with every mechanism stripped by prompt, and the product's component names
+(minus its domain nouns) are scrubbed out deterministically (`absences.scrub`).
+
+- product zeroed **and** twin has more of it, outside the zeroed range → **captured**;
+- product zeroed, twin lacks it too → **uncertain** → `confirm_intent` in the review file, NOT
+  captured unless the designer marks `capture` (a refusal and a never-needed look identical in code);
+- no twin (no API key) → captured, marked `baseline: unavailable`.
+
+Records embed their detector, so `check_subtractions` is self-contained and LLM-free; manifests
+from before the unification (built-ins stored by name) resolve through `BUILTINS`. The open
+channel (`absences.py`) finds what the registry doesn't know yet:
+
+1. **Baseline** — the same generic twin (one baseline for capture and survey).
+2. **Seen** — the survey diffs the product's code against the twin's (product chunked on file
+   boundaries, no truncation; an omission must hold in every chunk). Each finding names the thing
+   omitted, the twin code that has it (→ a generic exemplar), the product **host** it would apply
+   to, what the product does **instead** (a *different mechanism* — restating the absence doesn't
+   count), and anything **against** it (an unused token, half-wired state). Missing
+   accessibility/error handling/security is excluded: a defect, never identity. **Triage is
+   deterministic** (`absences.triage`): an ungrounded host is dropped as inapplicable, unsystematic
+   and known/discarded findings never surface, and confidence = substitute & no counter-evidence →
+   high, counter-evidence & no substitute → low, else medium; the review file lists high first.
+3. **Instructed** — a promoted absence enters the checklist as `SUBTRACTION/<name> (unverified)`.
+4. **Gated** — promotion proposes a detector (pattern or measure) with **inverted admission**
+   (`detectors.admit_absence`): well-formed, does **not** match the calibration product (it omits
+   the thing), and **does** match every generic exemplar (exemplars for open "other" sightings are
+   generated in a separate call, so the proposer never grades itself). A measure spec is admitted by
+   reading: the calibration repo zeroed, the exemplars (materialized as a repo) not. Once active it
+   joins the registry and is captured by the one rule above.
+
+An absence detector must police the *thing* being reintroduced, not one trait of it, and a false
+fire here FAILS an honest build (for additive detectors it only wrongly passes). Three guards:
+- **Construct-diverse exemplars** — 2–3 generic implementations that differ in form and technique
+  (a Tailwind pill, an inline square chip, MUI `<Chip>`), so a shape-only spec can't match them all.
+- **Near-miss probes** — generated code sharing a trait with the thing but not it (a round avatar,
+  a rounded button); admission rejects any spec that fires on one, and requires at least one probe.
+- **`scope: "element"`** — the conjuncts must co-occur inside ONE JSX tag or CSS rule
+  (`detectors.element_units`), so a fill on one element, tight padding on another and small text on
+  a third can't jointly "add a badge". `"source"` (the default, and what additive specs use) stays
+  for signals that legitimately span elements, like an icon-library import plus its usage.
+
+## The generic baseline (jobs → twins) and the gesture layer
+
+The twin baseline is built once per compile for designed products (`absences.build_baseline`) and
+shared by the subtractive channel and the component gesture check:
+
+- **Jobs** — what the product is *for*, mechanism-free (`extract_jobs`), then **rewritten to the
+  underlying need** (`rewrite_to_needs`): "view the board's past states" → "understand how the project
+  changed over time". The rewrite keeps the product **category** ("a kanban board" — its conventions
+  *are* the generic defaults) and rewrites only this product's choices within it; component names are
+  scrubbed (full names only from the kind, so a `Board` component can't strip the category noun).
+- **Sticky** — jobs persist per repo (`.cache/jobs_memory.json`): later compiles ask the model only
+  for real *changes* (added/removed capabilities) and code keeps the rest verbatim
+  (`apply_jobs_delta`); the first compile runs that check once against its own extraction so it
+  settles immediately. An edit with no design meaning leaves the jobs identical, so every downstream
+  generation hits its cache and no decision moves.
+- **Designer overrides** — the review file's `baseline_jobs` shows each original job and its need;
+  `strike` it or write a better need (stored per repo in `learned.json` `job_overrides`).
+- **Three twins** (`TWIN_FRAMINGS`: default / component-library / hand-written) — the model takes no
+  temperature, so variety comes from the framing. Registry omissions are **voted**: captured when a
+  majority of twins have it; the survey reads the twin closest to the majority.
+
+**The gesture layer** (`absences.check_component_gestures`). A distinctive gesture or a structural
+pattern makes a component identity on its own (`components._identity_bearing`) — context-blind: drag
+between columns is the *default* for a kanban board. Each captured component is matched to the twin
+files that together serve the **same purpose** (a model call — purpose is semantic; one product file
+may map to several twin files), and their gestures/patterns are read with the same deterministic
+detectors, per file. A gesture/pattern a majority of twins use for that purpose is default; a
+component whose identity rested only on such defaults goes to **review** (`confirm_intent`,
+`component:<role>`), never silently out — the twin can only downgrade a capture to a question. The
+**feel** layer (treatments, timings, material) keeps its global per-moment baselines, which can't
+leak. Drag via library idioms (dnd-kit, react-beautiful-dnd / `@hello-pangea/dnd`, react-dnd,
+react-draggable, framer-motion `drag`, use-gesture) reads as the same gesture as native drag.
+
+**Measuring the survey.** Its judgment is a model call, so the eval guards only the deterministic
+triage; the judgment is *measured* by `tests/probe_absence_survey.py` against
+`tests/fixtures/rubrick-omissions/` (a task list with planted omissions, each with a substitute, plus
+decoys: defaults it has, an unfinished-looking gap, inapplicable features; key in `ANSWERS.json`,
+outside `src/`). Recall is **twin-relative** — a labeled omission only counts when the twin actually
+includes it, because the agent's defaults (not ours) decide what's a delta — and *baseline
+independence* reports how many labeled defaults the twin includes at all. 2026-11-12, one cached
+sample each: structure-built baseline 0/5 recall · jobs twin 1/1 (independence 1/5) · uncompressed
+jobs twin 3/3 (independence 3/5), 0 errors throughout after the redesign; with need-rewrite + three
+twins 2/2 (the default twin now serves "recover from a mistaken removal" with an undo toast, so the
+product's refusal reads as `toast`), 0 errors, the unfinished hover surfaced at *low*.
+
+**Measuring the gesture layer and stability.** `tests/probe_gestural.py` scores
+`tests/fixtures/rubrick-gestural/` (a kanban board: drag-between-columns = the category default,
+must go to review; a drag-to-scrub history track = the signature, must be captured; no mechanism
+words may reach the twins). 2026-11-12: before — both components auto-captured on drag alone; after
+— 2/2, 0 leaks, 3/3 twins serve history by click. `tests/probe_stability.py` recompiles each labeled
+fixture after edits with no design meaning (a comment, a renamed local) and counts flipped
+decisions: 2 flips before sticky jobs (every twin regenerated — majority voting couldn't help), 0
+after, with one twin or three. (Stability came from sticky jobs; three twins guard against a single
+generation's quirk deciding a capture, which this probe doesn't isolate.)
 
 ## What the detectors read (coverage)
 

@@ -374,10 +374,28 @@ def compile_product_system(repo: str, gcss: str, comps: str,
 
     # --- components: the identity-bearing ROLES where aesthetic × interaction meet ---
     components = []
+    baseline: dict = {"jobs": None, "twins": [], "log": []}
     try:
         from rubrick.components import capture_components
         from rubrick.product_system import ComponentRecord
-        for sig in capture_components(repo, comps, css):
+        sigs = capture_components(repo, comps, css, limit=10)
+        # the generic baseline (jobs -> twins) — built once, only for DESIGNED products,
+        # shared by the gesture twin-check here and the subtractive channel below
+        nrec0 = len(styles) + len(surfaces) + len(rules) + (1 if composition else 0) + min(len(sigs), 3)
+        if nrec0 >= 2:
+            from rubrick.absences import build_baseline, check_component_gestures
+            baseline = build_baseline(repo, gcss, comps)
+            log += baseline["log"]
+            gt = check_component_gestures(repo, sigs, baseline, comps, gcss)
+            log += gt["log"]
+            sigs = gt["kept"]
+            for r in gt["review"]:
+                intent_items.append({"subject": f"component:{r['role']}", "captured": False,
+                                     "why": f"{r['role']}'s identity is a {r['gesture']} gesture"
+                                            + (f"/{sorted(r['patterns'])}" if r.get("patterns") else "")
+                                            + f" the generic build also uses for the same purpose "
+                                              f"({r['_votes']}) — 'capture' if it's still yours"})
+        for sig in sigs[:3]:
             components.append(ComponentRecord(sig["role"], sig["affordance"],
                                               sig["material_roles"], sig["treatments"],
                                               gesture=sig.get("gesture", "none"),
@@ -389,15 +407,30 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         log.append(f"components: skipped ({type(e).__name__})")
 
     # --- subtractions: deliberate OMISSIONS (negative-space identity) ---
-    subtractions = []
+    # ONE channel for every omission (rubrick.absences + rubrick.subtractions): each
+    # registered absence detector (built-in or learned) is captured only when the product
+    # zeroes it AND the generated generic twin has it; zeroed-but-the-twin-lacks-it goes to
+    # the designer (confirm_intent; not captured unless confirmed). Open survey -> tears.
+    subtractions: list[dict] = []
+    observed_absences: list[dict] = []
+    nrec = len(styles) + len(surfaces) + len(rules) + (1 if composition else 0) + len(components)
     try:
-        from rubrick.subtractions import detect_subtractions
-        nrec = len(styles) + len(surfaces) + len(rules) + (1 if composition else 0) + len(components)
-        subtractions = detect_subtractions(repo, gcss, comps, designed=nrec >= 2)
-        for s in subtractions:
-            log.append(f"subtraction: OMITS {s['omits']} — {s['note']}")
+        from rubrick.absences import observe_absences
+        ab = observe_absences(repo, gcss, comps, designed=nrec >= 2,
+                              baseline=baseline if baseline["twins"] else None)
+        subtractions = ab["subtractions"]
+        pending += ab["pending"]
+        observed_absences = ab["observed"]
+        log += ab["log"]
+        for r in ab["subtractions"]:
+            intent_items.append({"subject": f"absence:{r['omits']}", "captured": True,
+                                 "why": f"omits {r['omits']} — {r['baseline']}"})
+        for r in ab["uncertain"]:
+            intent_items.append({"subject": f"absence:{r['omits']}", "captured": False,
+                                 "why": f"product omits {r['omits']}, but {r['baseline']} — "
+                                        f"a refusal or just never needed? 'capture' to keep it"})
     except Exception as e:
-        log.append(f"subtractions: skipped ({type(e).__name__})")
+        log.append(f"absence channel: SKIPPED ({type(e).__name__}: {e})")
 
     # --- OPEN OBSERVATION: novelty surveys — seeing is never bounded by what gates. ---
     # One model call each (content-cached). Novel sightings become tears (-> review ->
@@ -442,7 +475,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     ps = ProductSystem(dispositions=dispositions, surfaces=surfaces, rules=rules,
                        styles=styles, composition=composition, components=components,
                        subtractions=subtractions, observed_patterns=observed_patterns,
-                       capabilities=capabilities)
+                       capabilities=capabilities, observed_absences=observed_absences)
     ps._log = log  # type: ignore[attr-defined]
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []
@@ -453,5 +486,6 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             deduped.append(p)
     ps._pending = deduped  # type: ignore[attr-defined]
     ps._intent = intent_items  # type: ignore[attr-defined]
+    ps._jobs = baseline.get("jobs")  # type: ignore[attr-defined]
     ps._moments = moment_items  # type: ignore[attr-defined]
     return ps

@@ -165,13 +165,23 @@ def pattern_description(name: str) -> str:
     return PATTERN_DESCRIPTIONS.get(name) or learned.promoted_patterns().get(name, name)
 
 
+# drag via a LIBRARY idiom reads as the same gesture as native drag (library-aware
+# detection, as for motion): dnd-kit, react-beautiful-dnd / @hello-pangea/dnd, react-dnd,
+# react-draggable, framer-motion's `drag` prop, use-gesture. A plain build matches none.
+_DRAG_LIBS = (r"@dnd-kit/|\buse(?:Draggable|Sortable|Droppable)\b|<DndContext\b|"
+              r"react-beautiful-dnd|@hello-pangea/dnd|<DragDropContext\b|<Draggable\b|"
+              r"react-dnd\b|react-draggable|<motion\.\w+[^>]*\sdrag(?:=|\s|>)|"
+              r"@use-gesture/|\buseGesture\b")
+
+
 def detect_gesture(source: str) -> str:
     """The primary GESTURE that triggers a component's response — the trigger half of an
     interaction pattern (gesture → response). Deterministic, from the component's handlers."""
     s = source
     if (re.search(r"pointermove|onPointerMove|mousemove", s, re.I)
             and re.search(r"onPointerDown|setPointerCapture|isDragging|dragging|onDragStart", s, re.I)) \
-            or re.search(r"\bdraggable\b|useDrag\b|onDragStart", s):
+            or re.search(r"\bdraggable\b|useDrag\b|onDragStart", s) \
+            or re.search(_DRAG_LIBS, s):
         return "drag"
     if re.search(r"onDoubleClick|onDblClick", s):
         return "double-click"

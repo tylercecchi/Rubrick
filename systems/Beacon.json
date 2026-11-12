@@ -409,6 +409,8 @@
   ],
   "subtractions": [],
   "observed_patterns": [],
+  "capabilities": [],
+  "observed_absences": [],
   "_checklist": [
     "COMPOSITION \u2014 organize around a central-canvas spine.  WHY: anchor everything to one central canvas and layer contextual panels and overlays onto it.",
     "TYPOGRAPHY \u2014 carry the moves ['custom-display-face', 'distinct-body-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] \u00b7 DEPLOYMENT: reserve ['custom-display-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] for the focal moments \u2014 the source deploys sparingly ('custom-display-face' in ~20% of source files, 'expressive-weight' in ~20% of source files, 'extreme-scale-contrast' in ~20% of source files, 'treated-microtype' in ~20% of source files, 'type-as-graphic' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: treat type as the primary identity carrier.",
@@ -426,6 +428,7 @@
   ],
   "_guide": {
     "deployment_frequency": "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the source deploys its strongest moves \u2014 textures, glows, loops, display type \u2014 at a specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and that restraint is itself part of the identity. Applying a reserved move to every element destroys the figure/ground contrast that makes it read as identity; the build goes noisy and one-dimensional, and the gate flags clear over-application. Match the deployment pattern, not just the move.",
+    "omission_is_identity": "What the product LEAVES OUT is as binding as what it adds. Agents reach for their defaults \u2014 shadows, icons, toasts, spinners, confirm dialogs, hover lifts \u2014 and each one quietly erodes an identity built on refusing it. Every SUBTRACTION on the checklist is a requirement, not a gap to fill; if a need seems to demand the omitted thing, use the product's substitute instead.",
     "build_to_the_why": "The checklist's WHY clauses are the product's dispositions \u2014 its soul. Build to those principles, not just to pass the checks. A check is a floor, not the finish: passing conformance means you didn't violate the grammar, NOT that it feels like one designer's hand.",
     "build_order": [
       "1. SKELETON \u2014 stand up the composition spine and the focal object first (structure before style). A great skin on no spine reads as generic.",

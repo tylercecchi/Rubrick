@@ -1,0 +1,15 @@
+{
+  "_what": "Answer key for the gesture layer and job rewriting. NOT under src/. Roles are component roles as Rubrick labels them (kebab-case filename).",
+  "components": {
+    "history-scrubber": {"expect": "captured", "why": "drag-to-scrub through board history is the signature gesture; a generic board shows history as an activity list or not at all"},
+    "board": {"expect": "review", "why": "drag-and-drop between columns is the DEFAULT gesture for a kanban board — not a delta for this kind of product, so it must not be auto-captured"}
+  },
+  "leaks": {
+    "_what": "Mechanism words that must NOT appear in the jobs handed to the twin (the history job must be stated as a need, e.g. 'review how the board changed over time').",
+    "forbidden_in_jobs": ["scrub", "playhead", "timeline", "slider", "drag", "replay", "track"]
+  },
+  "twin": {
+    "_what": "With the leak fixed, the twin's counterpart for history should NOT be a drag gesture.",
+    "history_counterpart_gesture_not": "drag"
+  }
+}

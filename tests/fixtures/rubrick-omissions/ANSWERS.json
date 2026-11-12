@@ -1,0 +1,155 @@
+{
+  "_what": "Answer key for the absence survey. NOT under src/, so discovery never reads it. A finding matches an entry when its name (or name+instead) contains EVERY token of one of the entry's token-sets (case-insensitive).",
+  "deliberate": {
+    "toast": {
+      "match": [
+        [
+          "toast"
+        ],
+        [
+          "snackbar"
+        ],
+        [
+          "notification"
+        ]
+      ],
+      "substitute": "inline 'Saved 12s ago' / 'Syncing…' text in the header (SyncStatus)",
+      "twin_pattern": "toast|snackbar|notistack|sonner|\\bnotif"
+    },
+    "confirm-dialog": {
+      "match": [
+        [
+          "confirm"
+        ],
+        [
+          "dialog"
+        ],
+        [
+          "modal"
+        ]
+      ],
+      "substitute": "delete is immediate with an inline Undo row (UndoRow)",
+      "twin_pattern": "confirm\\s*\\(|<dialog|Dialog|Modal|modal"
+    },
+    "icons": {
+      "match": [
+        [
+          "icon"
+        ]
+      ],
+      "substitute": "text-labelled actions: Archive / Delete / Add",
+      "twin_pattern": "icon|Icon|<svg|lucide|react-icons|heroicons|[✓✔✕✖×🗑✎➕]"
+    },
+    "count-badge": {
+      "match": [
+        [
+          "badge"
+        ],
+        [
+          "pill"
+        ],
+        [
+          "chip"
+        ],
+        [
+          "count"
+        ]
+      ],
+      "substitute": "counts as plain mono parenthetical text '(3 open / 5)'",
+      "twin_pattern": "badge|Badge|\\bpill\\b|\\bchip\\b|Chip"
+    },
+    "spinner": {
+      "match": [
+        [
+          "spinner"
+        ],
+        [
+          "loader"
+        ],
+        [
+          "loading"
+        ],
+        [
+          "skeleton"
+        ]
+      ],
+      "substitute": "'Syncing…' status text",
+      "twin_pattern": "spinner|Spinner|loader|Loader|skeleton|Skeleton|@keyframes\\s+spin|animation\\s*:[^;]*spin"
+    }
+  },
+  "decoys": {
+    "rounded-corners": {
+      "kind": "present",
+      "match": [
+        [
+          "round"
+        ],
+        [
+          "radius"
+        ],
+        [
+          "corner"
+        ]
+      ],
+      "why": "buttons use border-radius 6px"
+    },
+    "button-hover": {
+      "kind": "present",
+      "match": [
+        [
+          "button",
+          "hover"
+        ],
+        [
+          "action",
+          "hover"
+        ]
+      ],
+      "why": ".action:hover changes color and border"
+    },
+    "row-hover": {
+      "kind": "accident",
+      "match": [
+        [
+          "row",
+          "hover"
+        ],
+        [
+          "hover",
+          "highlight"
+        ],
+        [
+          "hover",
+          "lift"
+        ],
+        [
+          "hover",
+          "elevation"
+        ]
+      ],
+      "why": "--row-hover token is defined and never applied — unfinished, not refused"
+    },
+    "avatar": {
+      "kind": "inapplicable",
+      "match": [
+        [
+          "avatar"
+        ],
+        [
+          "image"
+        ],
+        [
+          "thumbnail"
+        ],
+        [
+          "chart"
+        ],
+        [
+          "illustration"
+        ]
+      ],
+      "why": "no users, images or data viz exist to host it"
+    }
+  },
+  "scoring": "recall is TWIN-RELATIVE: by the thesis, a 'deliberate' entry is only a real delta when the generated generic twin actually includes it (twin_pattern, case-sensitive regex over the twin source). recall = matched / entries present in the twin; entries absent from the twin are reported as 'not a delta vs this twin'. baseline independence = how many deliberate entries the twin includes at all (a twin that copied the product would include none). errors = any 'present' or 'inapplicable' decoy reported, or an 'accident' decoy reported above low confidence. Built-in registry omissions are neither credited nor penalized."
+}

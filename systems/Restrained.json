@@ -103,38 +103,55 @@
   "components": [],
   "subtractions": [
     {
+      "omits": "ambient-motion",
+      "note": "STATIC \u2014 no ambient / perpetual motion",
+      "detector": {
+        "measure": "has_ambient_motion",
+        "zeroed": "false",
+        "added": "true"
+      },
+      "builtin": true,
+      "violation": "the system is static (no ambient motion), but the build adds ambient animation \u2014 motion the identity refuses",
+      "baseline": "2/3 generic twins have it"
+    },
+    {
       "omits": "elevation-shadow",
-      "note": "deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation)"
+      "note": "deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation)",
+      "detector": {
+        "measure": "shadow_blur",
+        "zeroed": "none | < 8",
+        "added": ">= 20"
+      },
+      "builtin": true,
+      "violation": "the system is deliberately flat (no drop-shadow depth), but the build adds {v}px shadows \u2014 elevation the identity refuses (violation by excess)",
+      "baseline": "3/3 generic twins have it"
     },
     {
       "omits": "single-hue",
-      "note": "SINGLE-HUE \u2014 one accent hue family only, no multi-color palette"
-    },
-    {
-      "omits": "flat-color",
-      "note": "FLAT-COLOR \u2014 solid fills only, no gradients"
-    },
-    {
-      "omits": "single-face",
-      "note": "SINGLE-FACE \u2014 one typeface, no display/body pairing"
-    },
-    {
-      "omits": "ambient-motion",
-      "note": "STATIC \u2014 no ambient / perpetual motion"
+      "note": "SINGLE-HUE \u2014 one accent hue family only, no multi-color palette",
+      "detector": {
+        "measure": "hue_families",
+        "zeroed": "== 1",
+        "added": ">= 2"
+      },
+      "builtin": true,
+      "violation": "the system is single-hue (one accent family), but the build uses {v} hue families \u2014 a second color the identity refuses",
+      "baseline": "3/3 generic twins have it"
     }
   ],
   "observed_patterns": [],
+  "capabilities": [],
+  "observed_absences": [],
   "_checklist": [
     "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: a restrained base lets a single bold color carry emotional emphasis, drawing attention to what matters most.",
     "DENSITY \u2014 carry the moves ['information-dense'].  WHY: Every element should carry meaningful signal.",
+    "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation). Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
-    "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
-    "SUBTRACTION \u2014 the product is FLAT-COLOR \u2014 solid fills only, no gradients. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
-    "SUBTRACTION \u2014 the product is SINGLE-FACE \u2014 one typeface, no display/body pairing. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
-    "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."
+    "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."
   ],
   "_guide": {
     "deployment_frequency": "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the source deploys its strongest moves \u2014 textures, glows, loops, display type \u2014 at a specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and that restraint is itself part of the identity. Applying a reserved move to every element destroys the figure/ground contrast that makes it read as identity; the build goes noisy and one-dimensional, and the gate flags clear over-application. Match the deployment pattern, not just the move.",
+    "omission_is_identity": "What the product LEAVES OUT is as binding as what it adds. Agents reach for their defaults \u2014 shadows, icons, toasts, spinners, confirm dialogs, hover lifts \u2014 and each one quietly erodes an identity built on refusing it. Every SUBTRACTION on the checklist is a requirement, not a gap to fill; if a need seems to demand the omitted thing, use the product's substitute instead.",
     "build_to_the_why": "The checklist's WHY clauses are the product's dispositions \u2014 its soul. Build to those principles, not just to pass the checks. A check is a floor, not the finish: passing conformance means you didn't violate the grammar, NOT that it feels like one designer's hand.",
     "build_order": [
       "1. SKELETON \u2014 stand up the composition spine and the focal object first (structure before style). A great skin on no spine reads as generic.",
