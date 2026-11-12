@@ -32,16 +32,31 @@ def emit_review(ps, name: str, path: str,
     pending = getattr(ps, "_pending", [])
     promotions = [{"name": p["name"], "modality": p["modality"], "evidence": p["evidence"],
                    **({"component": p["component"]} if p.get("component") else {}),
+                   # absence tears carry their substitute + the generated generic exemplars
+                   # their presence detector will be admitted against
+                   **{k: p[k] for k in ("confidence", "host", "instead", "against", "category",
+                                 "exemplars", "near_misses") if p.get(k)},
                    "decision": "", "as": "", "description": ""} for p in pending]
     dispositions = [{"id": d.id, "prior": d.prior, "refined": ""}
                     for d in ps.dispositions.values()]
-    intent = [{"subject": i["subject"], "captured": i["captured"], "decision": ""}
+    intent = [{"subject": i["subject"], "captured": i["captured"],
+               **({"why": i["why"]} if i.get("why") else {}), "decision": ""}
               for i in getattr(ps, "_intent", [])]
     moments = [{"interaction": m["interaction"], "moment": m["moment"],
                 "confidence": m["confidence"], "correct_to": ""}
                for m in getattr(ps, "_moments", [])]
+    jobs = getattr(ps, "_jobs", None)
+    overrides = {}
+    if jobs and repo:
+        from rubrick.absences import _repo_key
+        overrides = learned.load().get("job_overrides", {}).get(_repo_key(repo), {})
+    baseline_jobs = [{"original": o, "need": n, "decision": "",
+                      **({"current_override": overrides[o.strip().lower()]}
+                         if o.strip().lower() in overrides else {})}
+                     for o, n in zip(jobs.raw_jobs, jobs.needs)] if jobs else []
     pathlib.Path(path).write_text(json.dumps(
         {"system": name,
+         "baseline_jobs": baseline_jobs,
          "calibration_target": {"repo": repo, "globals_css": globals_css,
                                 "components_dir": components_dir},
          "pending_promotions": promotions,
@@ -51,7 +66,10 @@ def emit_review(ps, name: str, path: str,
          "_how": "promotions: decision='promote'|'discard' (+'as'/'description'). dispositions: "
                  "'refined'=sharper why (blank keeps generated). confirm_intent: decision="
                  "'discard' to drop a captured move, 'capture' to rescue a thin one (blank keeps). "
-                 "confirm_moments: 'correct_to'=the right moment if mis-inferred (blank keeps)."},
+                 "confirm_moments: 'correct_to'=the right moment if mis-inferred (blank keeps). "
+                 "baseline_jobs: what the GENERIC TWIN is built from — 'strike' a job that is "
+                 "really this product's design choice, or write a better underlying need "
+                 "(blank keeps); applies from the next compile."},
         indent=2))
     return len(promotions)
 
@@ -76,6 +94,15 @@ def apply_review(path: str) -> dict:
         elif dec == "capture":
             learned.record_intent(it["subject"], "CAPTURE")
             intent_set.append(f"CAPTURE {it['subject']}")
+    jobs_set = []
+    repo_for_jobs = (data.get("calibration_target") or {}).get("repo", "")
+    for it in data.get("baseline_jobs", []):
+        dec = (it.get("decision") or "").strip()
+        if dec and repo_for_jobs:
+            from rubrick.absences import _repo_key
+            learned.record_job_override(_repo_key(repo_for_jobs), it["original"],
+                                        "STRIKE" if dec.lower() == "strike" else dec)
+            jobs_set.append(f"{it['original']!r} -> {'STRIKE' if dec.lower() == 'strike' else dec!r}")
     for it in data.get("confirm_moments", []):
         to = (it.get("correct_to") or "").strip()
         if to:
@@ -115,6 +142,38 @@ def apply_review(path: str) -> dict:
         record_detector(kind, vocab_name, None, "rejected", target.get("repo", ""), reason=status)
         return f"{kind}:{vocab_name} -> instructed-only (proposal rejected: {status})"
 
+    def _synthesize_absence(vocab_name: str, desc: str, it: dict) -> str:
+        """A promoted OMISSION earns a PRESENCE detector (inverted admission: must not
+        match the calibration product, must match every generic exemplar)."""
+        from rubrick.detectors import propose_absence_detector, record_detector
+        repo = target.get("repo", "")
+        if not calibration_source:
+            record_detector("absence", vocab_name, None, "unsynthesized", repo,
+                            reason="calibration repo unavailable at apply time")
+            return f"absence:{vocab_name} -> instructed-only (calibration repo unavailable)"
+        exemplars = list(it.get("exemplars") or [])
+        near_misses = list(it.get("near_misses") or [])
+        try:
+            if len(exemplars) < 2 or not near_misses:  # generate SEPARATELY from the proposer
+                from rubrick.absences import generate_exemplars
+                gen_ex, gen_nm = generate_exemplars(vocab_name, desc)
+                # the twin's real snippet + construct-diverse generated ones
+                exemplars = list(dict.fromkeys(exemplars + gen_ex))[:3]
+                near_misses = near_misses or gen_nm
+            evidence = it.get("evidence", "") + (f" Instead: {it['instead']}" if it.get("instead") else "")
+            cal_repo = (repo, target.get("globals_css", "src/app/globals.css"),
+                        target.get("components_dir", "src/components"))
+            spec, status = propose_absence_detector(vocab_name, desc, evidence,
+                                                    calibration_source, exemplars,
+                                                    near_misses, cal_repo)
+        except Exception as e:
+            spec, status = None, f"synthesis failed: {type(e).__name__}"
+        if spec is not None:
+            record_detector("absence", vocab_name, spec, "active", repo)
+            return f"absence:{vocab_name} -> ACTIVE (gates from the next compile/check)"
+        record_detector("absence", vocab_name, None, "rejected", repo, reason=status)
+        return f"absence:{vocab_name} -> instructed-only (proposal rejected: {status})"
+
     localities, detectors = [], []
     for it in data.get("pending_promotions", []):
         dec = (it.get("decision") or "").strip().lower()
@@ -145,6 +204,9 @@ def apply_review(path: str) -> dict:
                     detectors.append(out)
             elif mod == "behavior:moment":
                 learned.record_promoted_moment(vocab_name, desc)
+            elif mod == "absence":
+                learned.record_promoted_absence(vocab_name, desc)
+                detectors.append(_synthesize_absence(vocab_name, desc, it))
             promoted.append(f"{mod}:{vocab_name}")
         elif dec == "discard":
             kind = "treatment" if mod.startswith("behavior:") else mod
@@ -154,7 +216,7 @@ def apply_review(path: str) -> dict:
             unresolved.append(it["name"])
     return {"promoted": promoted, "discarded": discarded, "refined_dispositions": refined,
             "intent": intent_set, "moment_corrections": moments_fixed, "unresolved": unresolved,
-            "effect_locality": localities, "detectors": detectors}
+            "effect_locality": localities, "detectors": detectors, "baseline_jobs": jobs_set}
 
 
 def inspect_learned() -> dict:
@@ -172,6 +234,7 @@ def inspect_learned() -> dict:
         "discarded": d["discarded"],
         "locality_overrides": d["locality_overrides"],
         "promoted_patterns": d["promoted_patterns"],
+        "promoted_absences": d["promoted_absences"],
         "learned_detectors": {k: {kk: vv for kk, vv in v.items() if kk != "spec"} | {"has_spec": v.get("spec") is not None}
                               for k, v in d["learned_detectors"].items()},
     }
