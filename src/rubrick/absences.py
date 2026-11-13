@@ -384,13 +384,13 @@ def generate_twin(repo: str, gcss: str, comps: str, *, framing: str = "default",
                          max_tokens=21000, use_cache=use_cache)
 
 
-def build_baseline(repo: str, gcss: str, comps: str) -> dict:
+def build_baseline(repo: str, gcss: str, comps: str, jobs: Jobs | None = None) -> dict:
     """The jobs + every framing's materialized twin — built ONCE per compile and shared by
     the subtractive channel and the component twin check. {"jobs", "twins": [(name,
     repo, gcss, comps)], "log"}; empty twins when no key (callers degrade)."""
     log, twins, jobs = [], [], None
     try:
-        jobs = extract_jobs(repo, gcss, comps)
+        jobs = jobs or extract_jobs(repo, gcss, comps)
         log.append(f"baseline jobs ({jobs.product_kind}): {jobs.jobs}")
         for name in TWIN_FRAMINGS:
             try:
@@ -580,17 +580,26 @@ def triage(survey: AbsenceSurvey, product_source: str, known: set[str],
 
 # --- the compile-time channel ----------------------------------------------------------
 
+def _cat(key: str, section: str, default: str, product: str, **extra) -> dict:
+    """A catalog entry: one switchable item in a product's system."""
+    st = learned.switch(product, key) if product else None
+    return {"key": key, "section": section, "default": default, "state": st or default,
+            "set_by": "you" if st else "rubrick", **extra}
+
+
 def observe_absences(repo: str, gcss: str, comps: str, *, designed: bool,
-                     baseline: dict | None = None, roles: list[str] | None = None) -> dict:
+                     baseline: dict | None = None, roles: list[str] | None = None,
+                     product: str = "") -> dict:
     """The whole subtractive channel for one compile. Returns
-    {"subtractions": captured records, "uncertain": records for the designer,
-     "pending": ranked tears, "observed": instructed-only, "log": lines}.
+    {"subtractions": ACTIVE records, "uncertain": inactive records Rubrick left for the
+     designer, "catalog": every omission with its switch state, "pending": ranked tears,
+     "observed": instructed-only, "log": lines}.
     Every registered absence goes through the ONE rule in subtractions.classify, voted
     across the generic twins (`baseline` from build_baseline — built here if absent).
     Model calls are content-cached; failures degrade, never crash."""
     from rubrick.facet_signatures import raw_source
     from rubrick.subtractions import classify, registry
-    empty = {"subtractions": [], "uncertain": [], "pending": [], "observed": [], "log": []}
+    empty = {"subtractions": [], "uncertain": [], "catalog": [], "pending": [], "observed": [], "log": []}
     if not designed:
         return empty
     log, pending, observed = [], [], []
@@ -600,16 +609,15 @@ def observe_absences(repo: str, gcss: str, comps: str, *, designed: bool,
     twins = [t[1:] for t in baseline["twins"]]
     res = classify(repo, gcss, comps, twins, designed=True)
     log += res["log"]
-    captured, uncertain = [], []
-    for rec in res["captured"] + res["uncertain"]:  # a designer decision is final
-        dec = learned.intent_decision(f"absence:{rec['omits']}")
-        if dec == "DISCARD":
-            continue
-        if rec in res["captured"]:
-            captured.append(rec)
-        elif dec == "CAPTURE":
-            captured.append({**rec, "baseline": rec["baseline"] + "; designer confirmed"})
-        else:
+    captured, uncertain, catalog = [], [], []
+    for rec in res["captured"] + res["uncertain"]:  # the product's switch is final
+        default = "on" if rec in res["captured"] else "off"
+        c = _cat(f"absence:{rec['omits']}", "omit", default, product, label=rec["omits"],
+                 why=rec["baseline"])
+        catalog.append(c)
+        if c["state"] == "on":
+            captured.append(rec if default == "on" else {**rec, "baseline": rec["baseline"] + "; designer confirmed"})
+        elif default == "off" and c["set_by"] == "rubrick":
             uncertain.append(rec)
     for r in captured:
         log.append(f"subtraction: OMITS {r['omits']} — {r['note']} [{r['baseline']}]")
@@ -635,8 +643,8 @@ def observe_absences(repo: str, gcss: str, comps: str, *, designed: bool,
                           if observed else ""))
         except Exception as e:
             log.append(f"absence survey: SKIPPED ({type(e).__name__}: {e})")
-    return {"subtractions": captured, "uncertain": uncertain, "pending": pending,
-            "observed": observed, "log": log}
+    return {"subtractions": captured, "uncertain": uncertain, "catalog": catalog,
+            "pending": pending, "observed": observed, "log": log}
 
 
 # --- the GESTURE layer: is this component's gesture/pattern the default FOR ITS PURPOSE? --
@@ -724,13 +732,17 @@ def still_identity(sig: dict, defaults: dict) -> bool:
 
 
 def check_component_gestures(repo: str, sigs: list[dict], baseline: dict, comps: str,
-                             gcss: str) -> dict:
-    """Split captured component sigs into {"kept", "review", "log"} by the twin check."""
+                             gcss: str, product: str = "") -> dict:
+    """Split captured component sigs into {"kept", "review", "catalog", "log"} by the twin
+    check and the product's switches: a part whose identity is only a default gesture
+    starts INACTIVE; any part the designer switched off is dropped from the records."""
     from rubrick.discover import discover_components
     from rubrick.components import _kebab
     twins = baseline.get("twins") or []
     if not twins:
-        return {"kept": sigs, "review": [], "log": ["gesture twin-check: no twins — skipped"]}
+        cat = [_cat(f"component:{x['role']}", "add", "on", product, label=x["role"]) for x in sigs]
+        return {"kept": [x for x, c in zip(sigs, cat) if c["state"] == "on"], "review": [],
+                "catalog": cat, "log": ["gesture twin-check: no twins — skipped"]}
     paths_by_role = {_kebab(pathlib.Path(f).stem): f for f in discover_components(repo, comps)}
     roles = {s["role"]: paths_by_role[s["role"]] for s in sigs if s["role"] in paths_by_role}
     per_twin = []
@@ -739,23 +751,23 @@ def check_component_gestures(repo: str, sigs: list[dict], baseline: dict, comps:
             per_twin.append(match_counterparts(repo, roles, root, tg, tc))
         except Exception:
             per_twin.append({r: [] for r in roles})
-    kept, review, log = [], [], []
+    kept, review, catalog, log = [], [], [], []
     for s in sigs:
         d = gesture_defaults(s, [m.get(s["role"], []) for m in per_twin])
-        if (d["gesture"] or d["patterns"]) and not still_identity(s, d):
-            dec = learned.intent_decision(f"component:{s['role']}")
-            if dec == "CAPTURE":
-                kept.append(s)
-                log.append(f"gesture twin-check: {s['role']} default for its purpose "
-                           f"({d['votes']}) — designer confirmed, kept")
-            elif dec != "DISCARD":
-                review.append({**s, "_votes": d["votes"]})
-                log.append(f"gesture twin-check: {s['role']} -> REVIEW — its identity is a "
-                           f"gesture/pattern the generic build uses for the same purpose ({d['votes']})")
-            continue
-        kept.append(s)
-        log.append(f"gesture twin-check: {s['role']} kept ({d['votes']})")
-    return {"kept": kept, "review": review, "log": log}
+        default = "off" if (d["gesture"] or d["patterns"]) and not still_identity(s, d) else "on"
+        c = _cat(f"component:{s['role']}", "add", default, product, label=s["role"], why=d["votes"])
+        catalog.append(c)
+        if c["state"] == "on":
+            kept.append(s)
+            log.append(f"gesture twin-check: {s['role']} active ({d['votes']}"
+                       + (", designer confirmed" if default == "off" else "") + ")")
+        elif default == "off" and c["set_by"] == "rubrick":
+            review.append({**s, "_votes": d["votes"]})
+            log.append(f"gesture twin-check: {s['role']} -> INACTIVE, needs a look — its identity is a "
+                       f"gesture/pattern the generic build uses for the same purpose ({d['votes']})")
+        else:
+            log.append(f"gesture twin-check: {s['role']} inactive (set by you)")
+    return {"kept": kept, "review": review, "catalog": catalog, "log": log}
 
 
 # --- exemplars + near-misses for detector admission ------------------------------------

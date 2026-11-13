@@ -50,6 +50,18 @@ def _path(name: str) -> pathlib.Path:
     return SYSTEMS / f"{name}.json"
 
 
+def _resolve_layout(repo: str, gcss: str, comps: str) -> tuple[str, str]:
+    """Fill in whichever of the stylesheet / components folder wasn't given, by detection."""
+    if gcss and comps:
+        return gcss, comps
+    from rubrick.discover import detect_layout
+    r = pathlib.Path(repo).expanduser()
+    if not r.is_dir():
+        return gcss or "src/app/globals.css", comps or "src/components"
+    d = detect_layout(str(r))
+    return gcss or d["globals_css"], comps or d["components_dir"]
+
+
 def _validate_target(repo: str, gcss: str, comps: str) -> str | None:
     """A clear, actionable message if the target repo can't be observed — else None.
     Rubrick reads DECLARED source (a globals CSS + a components dir), so those must resolve."""
@@ -99,8 +111,8 @@ def get_product_system(name: str) -> dict:
 
 @mcp.tool()
 def check_conformance(name: str, candidate_repo: str,
-                      globals_css: str = "src/app/globals.css",
-                      components_dir: str = "src/components",
+                      globals_css: str = "",
+                      components_dir: str = "",
                       native: bool = False) -> dict:
     """Measure a candidate (your just-generated output, as a repo path) against a
     product system. Returns objective per-facet violations — a VERIFIED GATE, not a
@@ -111,9 +123,12 @@ def check_conformance(name: str, candidate_repo: str,
     building a NEW product in this product's spirit (reproduce the moves with your own
     fonts/colors). NATIVE (native=True) ALSO checks that you reused this product's
     ACTUAL faces/palette — use it when building a NEW FEATURE for THIS product, where
-    the new work must be indistinguishable from what's already there."""
+    the new work must be indistinguishable from what's already there.
+
+    globals_css / components_dir are found automatically; pass them only to override."""
     if not _path(name).exists():
         return {"error": f"no product system named {name!r}", "available": list_product_systems()}
+    globals_css, components_dir = _resolve_layout(candidate_repo, globals_css, components_dir)
     if err := _validate_target(candidate_repo, globals_css, components_dir):
         return {"error": err}
     if err := _key_error():
@@ -123,6 +138,11 @@ def check_conformance(name: str, candidate_repo: str,
         report = _check_conformance(candidate_repo, globals_css, components_dir,
                                     f"conform:{name}:{candidate_repo}", ps, native=native)
         report["_formatted"] = format_report(report)
+        try:  # keep the run, so the product system can show how builds did per item
+            from rubrick.runs import record_run
+            record_run(name, candidate_repo, native, report)
+        except Exception:
+            pass
         return report
     except Exception as e:  # extraction / model / parse failure — report, don't crash the server
         return {"error": f"conformance check failed: {type(e).__name__}: {e}"}
@@ -130,14 +150,16 @@ def check_conformance(name: str, candidate_repo: str,
 
 @mcp.tool()
 def compile_product_system(repo: str, name: str,
-                           globals_css: str = "src/app/globals.css",
-                           components_dir: str = "src/components",
+                           globals_css: str = "",
+                           components_dir: str = "",
                            sample_components: list[str] | None = None) -> dict:
     """Compile a product system from a repo and save it under `name`. SLOW — many
     model calls; run once, after which get_product_system / check_conformance are fast.
-    Returns the compiled manifest."""
+    Returns the compiled manifest. globals_css / components_dir are found automatically;
+    pass them only to override."""
     if not name or not name.strip():
         return {"error": "name is required — the product system is saved under it."}
+    globals_css, components_dir = _resolve_layout(repo, globals_css, components_dir)
     if err := _validate_target(repo, globals_css, components_dir):
         return {"error": err}
     if err := _key_error():

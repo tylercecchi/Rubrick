@@ -37,7 +37,9 @@ def emit_review(ps, name: str, path: str,
                    **{k: p[k] for k in ("confidence", "host", "instead", "against", "category",
                                  "exemplars", "near_misses") if p.get(k)},
                    "decision": "", "as": "", "description": ""} for p in pending]
-    dispositions = [{"id": d.id, "prior": d.prior, "refined": ""}
+    flags = getattr(ps, "_disp_flags", {})
+    dispositions = [{"id": d.id, "prior": d.prior, "refined": "",
+                     **({"check": flags[d.id]} if d.id in flags else {})}
                     for d in ps.dispositions.values()]
     intent = [{"subject": i["subject"], "captured": i["captured"],
                **({"why": i["why"]} if i.get("why") else {}), "decision": ""}
@@ -54,8 +56,12 @@ def emit_review(ps, name: str, path: str,
                       **({"current_override": overrides[o.strip().lower()]}
                          if o.strip().lower() in overrides else {})}
                      for o, n in zip(jobs.raw_jobs, jobs.needs)] if jobs else []
+    switches = [{**{k: c[k] for k in ("key", "section", "default", "state", "set_by")},
+                 **({"label": c["label"]} if c.get("label") else {}), "decision": ""}
+                for c in getattr(ps, "catalog", []) if not c.get("new")]
     pathlib.Path(path).write_text(json.dumps(
         {"system": name,
+         "switches": switches,
          "baseline_jobs": baseline_jobs,
          "calibration_target": {"repo": repo, "globals_css": globals_css,
                                 "components_dir": components_dir},
@@ -67,6 +73,9 @@ def emit_review(ps, name: str, path: str,
                  "'refined'=sharper why (blank keeps generated). confirm_intent: decision="
                  "'discard' to drop a captured move, 'capture' to rescue a thin one (blank keeps). "
                  "confirm_moments: 'correct_to'=the right moment if mis-inferred (blank keeps). "
+                 "switches: decision='on' (active) | 'off' (inactive) | 'keep' (confirm the current "
+                 "state); stored for THIS product only. New finds activate via pending_promotions "
+                 "(they need a name). "
                  "baseline_jobs: what the GENERIC TWIN is built from — 'strike' a job that is "
                  "really this product's design choice, or write a better underlying need "
                  "(blank keeps); applies from the next compile."},
@@ -84,16 +93,22 @@ def apply_review(path: str) -> dict:
     for it in data.get("refine_dispositions", []):
         r = (it.get("refined") or "").strip()
         if r:
-            learned.record_rationale(it["id"], r)
+            learned.record_rationale(it["id"], r, product=data.get("system", ""))
             refined.append(it["id"])
-    for it in data.get("confirm_intent", []):
+    product = data.get("system", "")
+    switched = []
+    for it in data.get("switches", []):  # per product: active / inactive / confirm
         dec = (it.get("decision") or "").strip().lower()
-        if dec == "discard":
-            learned.record_intent(it["subject"], "DISCARD")
-            intent_set.append(f"DISCARD {it['subject']}")
-        elif dec == "capture":
-            learned.record_intent(it["subject"], "CAPTURE")
-            intent_set.append(f"CAPTURE {it['subject']}")
+        state = {"on": "on", "active": "on", "off": "off", "inactive": "off",
+                 "keep": it.get("state")}.get(dec)
+        if state in ("on", "off") and product:
+            learned.record_switch(product, it["key"], state)
+            switched.append(f"{it['key']} -> {'active' if state == 'on' else 'inactive'}")
+    for it in data.get("confirm_intent", []):  # older review files: same meaning, now per product
+        dec = (it.get("decision") or "").strip().lower()
+        if dec in ("discard", "capture") and product:
+            learned.record_switch(product, it["subject"], "off" if dec == "discard" else "on")
+            intent_set.append(f"{dec.upper()} {it['subject']}")
     jobs_set = []
     repo_for_jobs = (data.get("calibration_target") or {}).get("repo", "")
     for it in data.get("baseline_jobs", []):
@@ -106,7 +121,7 @@ def apply_review(path: str) -> dict:
     for it in data.get("confirm_moments", []):
         to = (it.get("correct_to") or "").strip()
         if to:
-            learned.record_moment_correction(it["interaction"], it["moment"], to)
+            learned.record_moment_correction(it["interaction"], it["moment"], to, product=product)
             moments_fixed.append(f"{it['interaction']}: {it['moment']}->{to}")
     # Detector synthesis needs the calibration product's source (the proposed detector
     # must match the product the move was seen in — admission check #2).
@@ -208,15 +223,18 @@ def apply_review(path: str) -> dict:
                 learned.record_promoted_absence(vocab_name, desc)
                 detectors.append(_synthesize_absence(vocab_name, desc, it))
             promoted.append(f"{mod}:{vocab_name}")
-        elif dec == "discard":
-            kind = "treatment" if mod.startswith("behavior:") else mod
-            learned.record_discard(kind, it["name"])
+            if product:  # the word is global vocabulary; ACTIVE is this product's choice
+                learned.record_switch(product, f"new:{mod}:{it['name']}", "on")
+        elif dec == "discard":  # keep inactive — for THIS product only
+            if product:
+                learned.record_switch(product, f"new:{mod}:{it['name']}", "off")
             discarded.append(f"{mod}:{it['name']}")
         else:
             unresolved.append(it["name"])
     return {"promoted": promoted, "discarded": discarded, "refined_dispositions": refined,
             "intent": intent_set, "moment_corrections": moments_fixed, "unresolved": unresolved,
-            "effect_locality": localities, "detectors": detectors, "baseline_jobs": jobs_set}
+            "effect_locality": localities, "detectors": detectors, "baseline_jobs": jobs_set,
+            "switches": switched}
 
 
 def inspect_learned() -> dict:
@@ -235,6 +253,7 @@ def inspect_learned() -> dict:
         "locality_overrides": d["locality_overrides"],
         "promoted_patterns": d["promoted_patterns"],
         "promoted_absences": d["promoted_absences"],
+        "switches": d["switches"],
         "learned_detectors": {k: {kk: vv for kk, vv in v.items() if kk != "spec"} | {"has_spec": v.get("spec") is not None}
                               for k, v in d["learned_detectors"].items()},
     }

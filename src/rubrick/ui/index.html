@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubrick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1c1c1c;--ink2:#3a3a3a;--ink3:#484848;--mute:#6b6b6b;--line:#e3e3e3;--page:#efefef;--head:rgb(233,233,233);--rail:#f2f2f2;--card:#e7e7e7;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Figtree,system-ui,sans-serif;font-size:15px}
+button,input,textarea{font:inherit;color:inherit}
+a{color:var(--ink)}
+.shell{min-height:100vh;display:flex;flex-wrap:wrap;background:linear-gradient(to right,var(--rail) 240px,var(--page) 240px)}
+.rail{flex:0 0 240px;border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:22px;background:var(--rail)}
+.logo{display:flex;align-items:center;gap:10px;padding:0 6px;font-size:16px;font-weight:500}
+.logo i{width:28px;height:28px;border-radius:8px;background:var(--ink);display:inline-flex;align-items:center;justify-content:center}
+.nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;min-height:40px;cursor:pointer;color:var(--ink2);font-size:14px;font-weight:500}
+.nav:hover{background:#e9e9e9}.nav.on{background:var(--white);color:var(--ink)}
+.cap{font-size:13px;color:var(--mute);padding:0 10px}
+.prod{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;min-height:44px;cursor:pointer;font-size:14px;color:var(--ink2)}
+.prod:hover{background:#e9e9e9}.prod.on{background:var(--white);color:var(--ink);font-weight:500}
+.prod .sw8{width:22px;height:22px;border-radius:6px;flex:none}
+.prod small{display:block;font-size:12px;color:var(--mute);font-weight:400}
+.main{flex:999 1 640px;min-width:0;display:flex;flex-direction:column}
+header.hd{background:var(--head);padding:32px 32px 28px;display:flex;flex-direction:column;gap:10px}
+header.hd h1{margin:0;font-size:88px;font-weight:500;letter-spacing:-.055em;line-height:.9}
+header.hd p{margin:0;font-size:15px;color:var(--ink3)}
+.bar{background:var(--page);padding:32px 28px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ptab{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--ink3);background:transparent;border:0;border-radius:999px;padding:0 16px;min-height:40px;cursor:pointer}
+.ptab:hover{background:#e3e3e3;color:var(--ink)}.ptab.on{background:var(--ink);color:#fff}
+.ptab.ghost{border:1px solid #c8c8c8}.ptab.urgent{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pcount{font-size:12.5px;color:var(--mute)}.ptab.on .pcount{color:#c8c8c8}
+.grow{flex:1 1 auto}
+.status{font-size:13px;color:var(--mute);white-space:nowrap}
+.blurb{margin:0;padding:0 32px 20px;font-size:14px;line-height:1.5;color:var(--ink3);max-width:1040px}
+.banner{margin:0 28px 16px;border-radius:16px;padding:12px 16px;font-size:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.banner.info{background:var(--white);color:var(--ink2)}.banner.warn{background:#FFFBEB;color:#78350F}.banner.ok{background:#ECFDF3;color:#05603A}.banner.err{background:#FEF3F2;color:#912018}
+.cols{display:flex;flex-wrap:wrap;align-items:flex-start}
+.list{flex:999 1 440px;min-width:0;padding:0 16px 48px;display:flex;flex-direction:column;gap:14px}
+.box{background:var(--white);border-radius:24px;padding:8px 8px 14px;margin:0 8px}
+.sechead{display:flex;align-items:flex-end;gap:16px;padding:18px 16px 4px}
+.sechead h2{margin:0;font-size:30px;font-weight:500;letter-spacing:-.02em}
+.sechead p{margin:4px 0 0;font-size:14px;color:var(--ink3);line-height:1.5}
+.ghead{display:flex;align-items:center;gap:14px;padding:26px 16px 10px;margin:14px 0 2px;border-top:1px solid var(--line)}
+.gtitle{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;background:none;border:0;padding:6px 0;cursor:pointer;border-radius:10px}
+.gtitle .a{font-size:22px;font-weight:500;letter-spacing:-.015em;line-height:1.2}.gtitle .t{font-size:15px;color:var(--ink3)}
+.row{display:flex;align-items:center;gap:14px;border-radius:16px;padding:0 16px 0 0}
+.row:hover{background:#f7f7f7}.row.sel{background:var(--page)}
+.rcol{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;padding:14px 0 14px 16px}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--mute);min-height:18px}
+.rbtn{display:flex;flex-direction:column;gap:4px;text-align:left;background:none;border:0;padding:0;cursor:pointer;border-radius:8px}
+.rname{font-size:16px;font-weight:500;line-height:1.35}
+.rdesc{font-size:14px;line-height:1.45;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.y{background:var(--ink)}.dot.n{border:1.5px solid #929292}
+.needs{display:inline-flex;align-items:center;gap:6px;color:var(--ink)}.needs::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.tipw{position:relative;display:inline-flex}
+.tip{background:none;border:0;padding:2px 0;cursor:pointer;color:inherit;text-decoration:underline dotted #b5b5b5;text-underline-offset:3px;font-size:inherit}
+.bubble{position:absolute;left:0;bottom:calc(100% + 8px);width:max-content;max-width:280px;padding:9px 11px;border-radius:12px;background:var(--ink);color:#fff;font-size:12.5px;line-height:1.45;z-index:30}
+.tipw.r .bubble{left:auto;right:0}
+.bubble.float{position:fixed;bottom:auto;right:auto;z-index:40}
+.res{font-size:12px;border-radius:999px;padding:1px 8px}.res.pass{background:#DCFAE6;color:#067647}.res.fail{background:#FEE4E2;color:#B42318}.res.nc{background:#f2f2f2;color:var(--ink3)}
+.sw{flex:none;position:relative;width:42px;height:24px;border-radius:999px;border:0;background:#c8c8c8;cursor:pointer;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw.on{background:var(--ink)}.sw.on::after{transform:translateX(18px)}.sw.mixed{background:#929292}.sw.mixed::after{transform:translateX(9px)}
+.sw:focus-visible,.rbtn:focus-visible,.gtitle:focus-visible,.tip:focus-visible,.ptab:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.detail{flex:1 1 400px;min-width:0;padding:0 24px 24px 8px;align-self:stretch}
+.dcard{position:sticky;top:16px;background:var(--card);border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:16px}
+.dcard h3{margin:0;font-size:22px;font-weight:500;letter-spacing:-.01em}
+.dk{font-size:13px;color:var(--mute)}
+.p{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink2)}
+.panel{background:var(--white);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.5;color:var(--ink2)}
+.panel h4,.plain h4{margin:0;font-size:13px;font-weight:500;color:var(--ink3)}
+.plain{display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--ink2);padding:0 4px}
+code,pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;background:#f7f7f7;border-radius:10px;padding:10px}
+.btn{font-size:14px;font-weight:500;min-height:40px;padding:8px 16px;border-radius:999px;border:1px solid #c8c8c8;background:#fff;cursor:pointer}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{width:100%;border:1px solid #c8c8c8;border-radius:10px;padding:9px 11px;background:#fff;font-size:14px}
+.mrow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid #f0f0f0}
+.mrow:first-of-type{border-top:0}
+.pm{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--ink);color:#fff;cursor:pointer;font-size:20px;line-height:1}
+.chip{font-size:12px;color:var(--ink2);background:var(--page);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.full{padding:0 28px 48px;display:flex;flex-direction:column;gap:14px}
+.full .box{margin:0;padding:10px 8px}
+.li{padding:12px 16px;border-top:1px solid #f0f0f0;display:flex;gap:14px;align-items:baseline;font-size:14px;line-height:1.55;color:var(--ink2)}
+dialog{border:0;border-radius:24px;padding:24px;width:min(520px,92vw)}dialog::backdrop{background:rgba(0,0,0,.25)}
+dialog form{display:flex;flex-direction:column;gap:12px}
+.pick{display:flex;gap:8px}.pick .field{flex:1;min-width:0}.pick .btn{white-space:nowrap}
+.found{font-size:13px;line-height:1.5;color:var(--ink2);background:#f3f3f3;border-radius:10px;padding:9px 11px}
+.found code{font-size:12px;background:#fff;border-radius:6px;padding:1px 5px}.found.warn{color:#8a5a00;background:#fbf3e4}
+details.adjust summary{cursor:pointer;font-size:13px;color:var(--mute)}details.adjust[open]{display:flex;flex-direction:column;gap:12px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--ink2)}
+.empty{padding:40px 32px;font-size:15px;color:var(--ink3);line-height:1.6;max-width:720px}
+/* header bento: tiles drawn in the product's own materials (see specimen.py) */
+.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+.bcol{display:flex;flex-direction:column;gap:12px;min-width:0}.brow{display:flex;gap:12px;min-width:0}.brow>.tile{flex:1 1 0}
+.tile{position:relative;overflow:hidden;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-width:0;min-height:156px}
+.t-name{padding:4px 4px 8px;border-radius:0;justify-content:flex-end;gap:10px;min-height:0}
+.t-name h1{margin:0;font-size:88px;font-weight:500;letter-spacing:-.055em;line-height:.86;overflow-wrap:anywhere}
+.t-name p{margin:0;font-size:15px;line-height:1.4;color:var(--ink3)}
+.t-type{flex:1 1 auto;min-height:324px}.t-type-row{min-height:220px;flex:2 1 0}.t-omit{background:var(--white);min-height:0;justify-content:flex-start}
+.cap2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{line-height:.82;white-space:nowrap;overflow:hidden}
+.chips{display:flex;gap:6px;align-items:flex-end;min-width:0}
+.chip{flex:1 1 0;min-width:0;border-radius:10px;height:64px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.18)}
+.chip.n{flex:.5 1 0;height:38px}
+.omits{display:flex;flex-wrap:wrap;gap:6px}
+.omits span{font-size:13px;border-radius:999px;padding:5px 11px;background:#f0f0f0;color:var(--ink2);text-decoration:line-through;text-decoration-color:#9a9a9a}
+.t-scene{padding:0;justify-content:stretch;min-height:0}.t-scene .slot{position:absolute;inset:0;border-radius:20px}
+#frames{position:absolute;left:0;top:0;width:0;height:0;z-index:5}#frames iframe{position:absolute;border:0;background:transparent}
+.t-hero{flex:1 1 auto;min-height:300px}.t-part{min-height:220px}
+.reh{position:absolute;z-index:6;right:10px;bottom:10px;font-size:11.5px;border-radius:999px;padding:3px 9px;background:rgba(255,255,255,.88);color:#3a3a3a;border:0;cursor:pointer}
+.drawing{display:flex;flex-direction:column;gap:8px}
+.drawing .lbl{font-size:12.5px;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
+.drawing .slot{display:block;width:100%;aspect-ratio:320/180;border-radius:12px;background:#f3f3f3}
+.drawing .pending{aspect-ratio:320/180;border-radius:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-size:13px;color:var(--mute)}
+.prog{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink3);vertical-align:middle}
+.prog .track{position:relative;width:140px;height:6px;border-radius:999px;background:#d6d6d6;overflow:hidden}
+.prog .track i{position:absolute;inset:0 auto 0 0;border-radius:inherit;background:var(--ink);transition:width .6s ease}
+.prog .track.busy i{width:35%;animation:prog-slide 1.4s ease-in-out infinite}
+.prog .pct{font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink);min-width:3ch}
+.pending .prog{flex-direction:column;gap:10px}.pending .prog .track{width:180px}
+@keyframes prog-slide{0%{left:-35%}100%{left:100%}}
+@media (prefers-reduced-motion:reduce){.prog .track.busy i{animation:none;left:0;width:100%;opacity:.35}}
+.linkbtn{background:none;border:0;padding:0;font:inherit;font-size:12.5px;color:var(--mute);text-decoration:underline;cursor:pointer}
+@keyframes rb-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.72);opacity:.55}}
+@keyframes rb-ring{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+.pulse-dot{position:relative;width:18px;height:18px;border-radius:50%}
+.pulse-dot.live{animation:rb-pulse var(--dur,2s) var(--ease,ease-in-out) infinite}
+.pulse-dot.live::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:rb-ring var(--dur,2s) var(--ease,ease-out) infinite}
+@media (max-width:1100px){.bento{grid-template-columns:minmax(0,1fr)}.t-type{min-height:260px}}
+@media (max-width:900px){header.hd>.brow{flex-wrap:wrap}header.hd>.brow>.tile{flex:1 1 45%}}
+@media (max-width:560px){.brow{flex-direction:column}.t-name h1{font-size:56px}}
+@media (prefers-reduced-motion:reduce){.pulse-dot.live,.pulse-dot.live::after{animation:none}}
+@media (max-width:760px){.shell{background:var(--page)}.rail{flex:1 1 100%}header.hd h1{font-size:56px}}
+@media (prefers-reduced-motion:reduce){.sw::after{transition:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail" id="rail"></aside>
+  <div class="main" id="main"></div>
+</div>
+
+<div id="frames" aria-hidden="false"></div>
+<dialog id="addDlg"><form method="dialog" id="addForm">
+  <h3 style="margin:0;font-size:20px;font-weight:500">Add a product</h3>
+  <p class="p">Rubrick reads the product’s source and compiles its system. This takes a few minutes the first time.</p>
+  <label class="f">Name<input class="field" name="name" required placeholder="Beacon" autocomplete="off"></label>
+  <label class="f">Folder<span class="pick"><input class="field" name="repo" required placeholder="/path/to/your/app" autocomplete="off"><button type="button" class="btn" data-pickfolder>Choose folder…</button></span></label>
+  <div class="found" hidden></div>
+  <details class="adjust"><summary>Adjust what Rubrick reads</summary>
+    <label class="f">Global stylesheet<input class="field" name="globals_css" placeholder="found automatically"></label>
+    <label class="f">Components folder<input class="field" name="components_dir" placeholder="found automatically"></label>
+  </details>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn pri" value="ok">Compile →</button></div>
+</form></dialog>
+
+<dialog id="checkDlg"><form method="dialog" id="checkForm">
+  <h3 style="margin:0;font-size:20px;font-weight:500">Run a check</h3>
+  <p class="p">Check a build against this product’s system. Only active items are checked.</p>
+  <label class="f">The build’s folder<span class="pick"><input class="field" name="repo" required placeholder="/path/to/the/build" autocomplete="off"><button type="button" class="btn" data-pickfolder>Choose folder…</button></span></label>
+  <div class="found" hidden></div>
+  <details class="adjust"><summary>Adjust what Rubrick reads</summary>
+    <label class="f">Global stylesheet<input class="field" name="globals_css" placeholder="found automatically"></label>
+    <label class="f">Components folder<input class="field" name="components_dir" placeholder="found automatically"></label>
+  </details>
+  <label class="f" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="native"> A feature inside this product (also require its exact typefaces and colors)</label>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn pri" value="ok">Run check →</button></div>
+</form></dialog>
+
+<script>
+const S = { products: [], cur: null, d: null, view: "needs", sel: null, tip: null, aboutOpen: false,
+            job: null, jobText: "", flash: null, learned: null, runSel: 0, names: {}, descs: {} };
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j;
+}
+const KIND = { move: "Captured", part: "Signature part", new: "New to Rubrick", omission: "Left out" };
+const KIND_TIP = {
+  move: "Clearly different from every typical build of this kind of product, so Rubrick made it active.",
+  part: "A piece where the product’s look and behavior come together. Builds need a part that plays the same role.",
+  new: "Something this product does that Rubrick has no name for yet. It starts inactive; name it and make it active and Rubrick learns to recognize it.",
+  omission: "A default most typical builds include that this product leaves out. Active means builds must leave it out too." };
+const kindOf = (it) => it.kind === "omission" && !it.key.startsWith("new:") && it.default === "on" ? "omission" : it.kind;
+const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 90 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : new Date(iso).toLocaleDateString(); };
+
+// ---------------------------------------------------------------- loading
+async function loadProducts() { S.products = await api("/api/products"); }
+async function loadDetail() { if (S.cur) { S.d = await api("/api/products/" + encodeURIComponent(S.cur)); followDrawing(); } }
+// The system's drawing job (stills + every comparison) runs after each compile. Follow it,
+// reloading the product as drawings land so each one appears when it's ready.
+S.following = {};
+function followDrawing() {
+  const q = S.d?.drawing_queue, name = S.cur; if (!q || S.following[q.job]) return;
+  S.following[q.job] = true;
+  (async () => {
+    let last = "";
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 4000));
+      let j; try { j = await api("/api/jobs/" + q.job); } catch { break; }
+      if (j.status !== last || j.state !== "running") {
+        last = j.status;
+        if (S.cur === name) { S.d = await api("/api/products/" + encodeURIComponent(name)); render(); }
+      }
+      if (j.state !== "running") {
+        const errs = Object.keys(j.result?.errors || {}).length;
+        if (S.cur === name && j.state === "done") { S.flash = { kind: errs ? "warn" : "ok", text: errs ? `Drew ${name}’s system; ${errs} comparison${errs === 1 ? "" : "s"} couldn’t be drawn (open one to try again).` : `${name}’s stills and comparisons are drawn.` }; render(); }
+        break;
+      }
+    }
+  })();
+}
+// Progress: a real percentage when the work is counted (the system's drawing job: the
+// stills and each comparison), otherwise a moving bar with the current step.
+function progress(p, label) {
+  if (p && p.total) {
+    const pct = Math.round((100 * p.done) / p.total);
+    return `<span class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${esc(label)}"><span class="track"><i style="width:${pct}%"></i></span><span class="pct">${pct}%</span><span>${esc(label)}</span></span>`;
+  }
+  return `<span class="prog" role="progressbar" aria-label="${esc(label)}"><span class="track busy"><i></i></span><span>${esc(label)}</span></span>`;
+}
+function queued(key) { return !!S.d?.drawing_queue?.keys?.includes(key); }
+async function refresh() { await loadProducts(); const [h, hk] = decodeURIComponent(location.hash.slice(1)).split("/"); if (!S.cur && S.products.some((p) => p.name === h)) { S.cur = h; if (hk) { S.sel = hk; S.view = "all"; } } if (!S.cur && S.products.length) S.cur = S.products[0].name; await loadDetail(); render(); }
+// drawing and bento jobs run beside the page, not blocking it like a compile
+async function sideJob(slot, promise, onDone) {
+  try {
+    const { job } = await promise; slot.job = job; slot.status = "Starting…"; slot.error = null; render();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const j = await api("/api/jobs/" + job);
+      slot.status = j.status || slot.status;
+      if (j.state === "done") { slot.job = null; await loadDetail(); onDone && onDone(); render(); return; }
+      if (j.state === "error") { slot.job = null; slot.error = j.error; render(); return; }
+      render();
+    }
+  } catch (e) { slot.job = null; slot.error = e.message; render(); }
+}
+S.draws = {}; S.bentoJob = {};
+function startDrawing(key) {
+  const slot = (S.draws[S.cur + "|" + key] ||= {}); if (slot.job) return;
+  slot.tried = true;
+  sideJob(slot, api(`/api/products/${encodeURIComponent(S.cur)}/drawing`, { key }));
+}
+function startBento() {
+  if (S.bentoJob.job) return;
+  sideJob(S.bentoJob, api(`/api/products/${encodeURIComponent(S.cur)}/bento`, {}));
+}
+function maybeDraw() {  // drawings are made the first time an item is opened, then cached
+  // only for an item the person opened — the default selection on page load doesn't count
+  if (!S.d || !S.sel || S.sel !== S.opened || S.sel.startsWith("p:") || !["needs", "all"].includes(S.view)) return;
+  if (S.d.drawings?.[S.sel] || queued(S.sel)) return;
+  const slot = S.draws[S.cur + "|" + S.sel];
+  if (slot && (slot.job || slot.tried)) return;
+  startDrawing(S.sel);
+}
+function rehChip(r) {
+  if (!r) return "";
+  const text = r.passed ? "" : r.passed === false ? `${r.lines.length} gate fault${r.lines.length === 1 ? "" : "s"}` : "Not rehearsed";
+  if (!text) return "";
+  const why = r.passed === false ? r.lines.join("\n") : (r.note || "");
+  return `<button class="reh" title="${esc(why)}">${esc(text)}</button>`;
+}
+// Scenes live in persistent frames on their own layer, positioned over slots in the page.
+// The page re-renders its HTML on every change; a frame inside it would reload and restart
+// its animation each time. A frame is made once per scene and only ever moved.
+function sceneFrame(sc, title) {
+  return `<div class="slot" data-scene="${esc(sc.url)}" data-title="${esc(title)}"></div>`;
+}
+const FRAMES = {};
+function placeFrames() {
+  const layer = document.getElementById("frames"); if (!layer) return;
+  const seen = new Set();
+  for (const slot of document.querySelectorAll(".slot[data-scene]")) {
+    const url = slot.dataset.scene; seen.add(url);
+    let f = FRAMES[url];
+    if (!f) {
+      f = document.createElement("iframe");
+      f.setAttribute("sandbox", "allow-scripts"); f.src = url; f.title = slot.dataset.title || "";
+      layer.appendChild(f); FRAMES[url] = f;
+    }
+    const r = slot.getBoundingClientRect(), cs = getComputedStyle(slot);
+    Object.assign(f.style, { left: r.left + scrollX + "px", top: r.top + scrollY + "px", width: r.width + "px",
+      height: r.height + "px", borderRadius: cs.borderRadius, display: r.width && r.height ? "block" : "none" });
+  }
+  for (const [u, f] of Object.entries(FRAMES)) if (!seen.has(u)) { f.remove(); delete FRAMES[u]; }
+}
+let placing = 0;
+const placeSoon = () => { if (!placing) placing = requestAnimationFrame(() => { placing = 0; stickCard(); placeFrames(); positionTip(); }); };
+addEventListener("scroll", placeSoon, { passive: true }); addEventListener("resize", () => { stickCard(); placeSoon(); });
+new ResizeObserver(placeSoon).observe(document.documentElement);
+function drawingHTML(i) {
+  const d = S.d, dr = d.drawings?.[i.key], slot = S.draws[S.cur + "|" + i.key] || {};
+  const head = `<h4>${i.section === "omit" ? `Without it, and with it` : `${esc(d.name)} and a typical build`}</h4>`;
+  if (!dr && queued(i.key)) {
+    return `<div class="panel drawing">${head}<div class="pending">${progress(d.drawing_queue.progress, `Queued with the rest of ${d.name}`)}</div></div>`;
+  }
+  if (!dr) {
+    const msg = slot.job ? progress(null, slot.status || "Drawing…") : slot.error ? `Couldn’t draw this: ${esc(slot.error)} <button class="linkbtn" data-redraw="${esc(i.key)}">Try again</button>` : "Drawing…";
+    const idle = !slot.job && !slot.error && S.opened !== i.key;
+    return `<div class="panel drawing">${head}<div class="pending">${idle ? `<button class="btn" data-redraw="${esc(i.key)}">Draw this comparison</button>` : msg}</div></div>`;
+  }
+  const by = Object.fromEntries(dr.scenes.map((sc) => [sc.id, sc]));
+  const pane = (sc, label) => sc ? `<div class="lbl"><span>${label}</span>${sc.rehearsal && sc.rehearsal.passed === false ? `<span title="${esc(sc.rehearsal.lines.join("\n"))}">${sc.rehearsal.lines.length} gate faults</span>` : ""}</div>${sceneFrame(sc, label)}` : "";
+  return `<div class="panel drawing">${head}
+    ${pane(by.product, esc(d.name))}${pane(by.typical, "A typical build")}
+    <div class="lbl"><span>${queued(i.key) ? "Being redrawn with the rest of the system." : dr.stale ? "The evidence changed since this was drawn." : "Drawn by Rubrick from the source."}</span>${slot.job || queued(i.key) ? queued(i.key) ? "" : progress(null, "Redrawing…") : `<button class="linkbtn" data-redraw="${esc(i.key)}">Redraw</button>`}</div></div>`;
+}
+
+async function runJob(promise, label, after) {
+  try {
+    const { job } = await promise; S.job = job; S.jobText = label; render();
+    const t0 = Date.now();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 1200));
+      const j = await api("/api/jobs/" + job);
+      S.jobText = label + " " + Math.round((Date.now() - t0) / 1000) + "s";
+      if (j.state === "done") { S.job = null; await refresh(); if (after) after(j.result); return; }
+      if (j.state === "error") { S.job = null; S.flash = { kind: "err", text: label + " failed: " + j.error }; render(); return; }
+      render();
+    }
+  } catch (e) { S.job = null; S.flash = { kind: "err", text: e.message }; render(); }
+}
+
+// ---------------------------------------------------------------- derived
+function itemsIn(section) { return (S.d?.items || []).filter((i) => i.section === section); }
+function visible(i) { return S.view === "all" || (S.view === "needs" && i.needs); }
+function groupState(items) { const n = items.filter((i) => i.state === "on").length; return { n, total: items.length, st: n === 0 ? "off" : n === items.length ? "on" : "mixed" }; }
+function needsCount() { return (S.d?.items || []).filter((i) => i.needs).length + (S.d?.jobs || []).filter((j) => j.original !== j.need && !j.override).length; }
+
+// ---------------------------------------------------------------- rendering
+function tip(id, text, body, right) {
+  const open = S.tip === id;
+  return `<span class="tipw${right ? " r" : ""}"><button class="tip" data-tip="${esc(id)}" aria-expanded="${open}">${esc(text)}</button>${open ? `<span class="bubble" role="note">${esc(body)}</span>` : ""}</span>`;
+}
+function switchBtn(st, label, attrs) { return `<button class="sw${st === "on" ? " on" : st === "mixed" ? " mixed" : ""}" role="switch" aria-checked="${st === "on" ? "true" : st === "mixed" ? "mixed" : "false"}" aria-label="${esc(label)}" ${attrs}></button>`; }
+function rowHTML(i) {
+  const k = kindOf(i), sel = S.sel === i.key;
+  const conf = i.confidence ? tip(i.key + ":c", { high: "Likely on purpose", medium: "Possibly on purpose", low: "May be unfinished" }[i.confidence] || i.confidence,
+    { high: "The product does something else instead, and nothing suggests the gap is unfinished.", medium: "There’s a substitute, but also a sign it might be unfinished.", low: "No substitute, and signs the gap is accidental — like a style defined but never used." }[i.confidence] || "") : "";
+  const votes = i.votes ? `<span title="${i.votes[0]} of ${i.votes[1]} typical builds have this">${Array.from({ length: i.votes[1] }, (_, x) => `<span class="dot ${x < i.votes[0] ? "y" : "n"}"></span>`).join(" ")}</span>` : "";
+  const res = i.result ? `<span class="res ${i.result.result === "pass" ? "pass" : i.result.result === "fail" ? "fail" : "nc"}">${i.result.result === "pass" ? "Passed last check" : i.result.result === "fail" ? "Failed last check" : "Not comparable"}</span>` : "";
+  return `<div class="row${sel ? " sel" : ""}"><div class="rcol">
+    <div class="meta">${i.needs ? `<span class="needs">Needs a look</span><span>·</span>` : ""}${tip(i.key + ":k", KIND[k] || k, KIND_TIP[k] || "")}${conf ? "<span>·</span>" + conf : ""}${votes ? "<span>·</span>" + votes : ""}${res ? "<span>·</span>" + res : ""}<span class="grow"></span>${tip(i.key + ":s", i.set_by === "you" ? "Set by you" : "Set by Rubrick", i.set_by === "you" ? "You set this. Recompiles never change it." : "Rubrick chose this from its evidence. A recompile may change it until you set it yourself.", true)}</div>
+    <button class="rbtn" data-sel="${esc(i.key)}" aria-pressed="${sel}"><span class="rname">${esc(i.label)}</span>${i.desc ? `<span class="rdesc">${esc(i.desc)}</span>` : ""}</button>
+  </div>${switchBtn(i.state, i.label + (i.state === "on" ? ", active" : ", inactive"), `data-switch="${esc(i.key)}"`)}</div>`;
+}
+function rail() {
+  const prods = S.products.map((p) => `<button class="prod${p.name === S.cur ? " on" : ""}" data-prod="${esc(p.name)}"><span class="sw8" style="background:${esc(p.swatch)}"></span><span style="flex:1 1 auto;min-width:0">${esc(p.name)}<small>${p.has_catalog ? (p.pending ? "Changes waiting" : "Compiled " + ago(p.compiled_at)) : "Needs a recompile"}</small></span>${p.needs ? `<span style="font-size:12px;color:var(--mute)">${p.needs}</span>` : ""}</button>`).join("");
+  return `<div class="logo"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect><path d="M13 7.5h4.5V12"></path></svg></i>Rubrick</div>
+  <nav style="display:flex;flex-direction:column;gap:2px">
+    <button class="nav${S.view !== "learned" ? " on" : ""}" data-view="needs">Product system</button>
+    <button class="nav${S.view === "learned" ? " on" : ""}" data-view="learned">What Rubrick has learned</button>
+  </nav>
+  <div style="display:flex;flex-direction:column;gap:6px"><span class="cap">Products</span>${prods || `<span class="cap">None yet.</span>`}
+    <button class="nav" data-add style="color:var(--mute)">+ Add a product</button></div>`;
+}
+function bar() {
+  const n = needsCount(), all = (S.d?.items || []).length;
+  const pill = (v, label, count) => `<button class="ptab${S.view === v ? " on" : ""}" data-view="${v}">${label}${count !== undefined ? ` <span class="pcount">${count}</span>` : ""}</button>`;
+  const status = S.job ? S.jobText : S.d ? (S.d.pending ? "Changes waiting for a recompile" : "Compiled " + ago(S.d.compiled_at)) : "";
+  return `<div class="bar">${pill("needs", "Needs a look", n)}${pill("all", "All", all)}${pill("builder", "What builders read")}${pill("runs", "Check runs", S.d?.runs.length || 0)}
+    <span class="grow"></span><span class="status" role="status">${esc(status)}</span>
+    <button class="ptab ghost" data-check ${S.job ? "disabled" : ""}>Run a check</button>
+    <button class="ptab ghost${S.d?.pending ? " urgent" : ""}" data-recompile ${S.job || !S.d?.can_compile ? "disabled" : ""} title="${S.d?.can_compile ? "" : "Add this product’s repo to recompile it"}">${S.job ? "Working…" : "Recompile"}</button></div>`;
+}
+function banners() {
+  let h = "";
+  if (S.flash) h += `<div class="banner ${S.flash.kind}" role="status"><span class="grow">${esc(S.flash.text)}</span><button class="btn" data-dismiss>Dismiss</button></div>`;
+  if (S.d && !S.d.items.length) h += `<div class="banner warn">This system was compiled by an older Rubrick, so it has no switches. Recompile it to review and toggle its additions and omissions.</div>`;
+  if (S.d?.pending && !S.job) h += `<div class="banner info"><span class="grow">You have changes since the last compile. They apply to ${esc(S.d.name)}’s system when it’s recompiled — until then, builders and checks use the last compile.</span>${S.d.can_compile ? `<button class="btn pri" data-recompile>Recompile now →</button>` : ""}</div>`;
+  return h;
+}
+function systemView() {
+  const d = S.d;
+  const blurb = S.view === "needs" ? `Things Rubrick wasn’t sure about. They start inactive — make the ones that are part of ${esc(d.name)} active.` : `Everything Rubrick found in ${esc(d.name)}. Active additions must be included and active omissions must be left out; inactive ones are known but not required.`;
+  const adds = itemsIn("add"), omits = itemsIn("omit");
+  const byP = {}; adds.forEach((i) => { (byP[i.principle || "_"] ||= []).push(i); });
+  const groups = d.principles.filter((p) => byP[p.id]).map((p) => ({ p, items: byP[p.id] }));
+  if (byP._) groups.push({ p: { id: "_", title: "Not tied to a principle", area: "Other additions" }, items: byP._ });
+  const secHead = (title, sub, items) => { const g = groupState(items); return `<div class="sechead"><div class="grow"><h2>${title}</h2><p>${sub}</p></div><span class="status">${g.n} active · ${g.total - g.n} inactive</span>${items.length ? switchBtn(g.st, title, `data-group="${title}"`) : ""}</div>`; };
+  const addHTML = groups.map(({ p, items }) => { const vis = items.filter(visible); if (!vis.length) return ""; const g = groupState(items);
+    return `<div><div class="ghead"><button class="gtitle" data-psel="${esc(p.id)}"><span class="a">${esc(p.area || p.title)}</span>${p.area ? `<span class="t">${esc(p.title)}</span>` : ""}</button><span class="status">${g.n} of ${g.total} active</span>${switchBtn(g.st, p.title, `data-pswitch="${esc(p.id)}"`)}</div>${vis.map(rowHTML).join("")}</div>`; }).join("");
+  const omitVis = omits.filter(visible);
+  const jobs = d.jobs.filter((j) => S.view === "all" || (j.original !== j.need && !j.override));
+  const openAbout = S.aboutOpen || (S.view === "needs" && jobs.length > 0);
+  const aboutHTML = d.jobs.length ? `<div class="box" style="padding:6px 0 8px"><div style="display:flex;align-items:center;gap:14px;padding:10px 12px 10px 16px"><div class="grow"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:16px;font-weight:500">How Rubrick describes ${esc(d.name)}</span><span style="font-size:13px;color:var(--ink3)">${tip("about", "What’s this?", `Rubrick writes down what ${d.name} is for — its jobs, with design choices stripped out — and builds three typical versions from these lines. Every addition and omission is judged against those typical builds. Remove a line if it describes ${d.name}’s own design rather than what people need.`)}</span></div><div style="font-size:13px;color:var(--mute)">Not part of the system — what typical builds are made from · ${d.jobs.length} lines${d.kind ? " · read as " + esc(d.kind) : ""}</div></div><button class="pm" data-about aria-expanded="${openAbout}" aria-label="${openAbout ? "Hide" : "Show"} the description">${openAbout ? "−" : "+"}</button></div>${openAbout ? jobs.map((j) => `<div class="row"><div class="rcol"><div class="meta">${j.original !== j.need && !j.override ? `<span class="needs">Needs a look</span><span>·</span>` : ""}<span>${j.override === "STRIKE" ? "Removed by you" : j.override ? "Rewritten by you" : j.original !== j.need ? "Reworded by Rubrick" : "Description"}</span></div><span class="rname" style="${j.override === "STRIKE" ? "text-decoration:line-through;color:var(--mute)" : ""}">${esc(j.override && j.override !== "STRIKE" ? j.override : j.need)}</span>${j.original !== j.need ? `<span class="rdesc">From “${esc(j.original)}”</span>` : ""}</div>${switchBtn(j.override === "STRIKE" ? "off" : "on", j.need, `data-job="${esc(j.original)}" data-jobstate="${j.override === "STRIKE" ? "off" : "on"}"`)}</div>`).join("") : ""}</div>` : "";
+  const empty = !addHTML && !omitVis.length && (!openAbout || !jobs.length);
+  return `<p class="blurb">${blurb}</p><div class="cols"><div class="list">
+    ${empty ? `<div class="box"><p class="empty" style="padding:24px 16px">Nothing needs a look. Every addition and omission in ${esc(d.name)}’s system has been set or confirmed by you.</p></div>` : ""}
+    ${addHTML ? `<div class="box">${secHead("Additions", `What ${esc(d.name)} does that a typical build doesn’t. Active means builds must include it.`, adds)}${addHTML}</div>` : ""}
+    ${omitVis.length ? `<div class="box">${secHead("Omissions", `What ${esc(d.name)} leaves out that a typical build includes. Active means builds must leave it out.`, omits)}<div style="height:6px"></div>${omitVis.map(rowHTML).join("")}</div>` : ""}
+    ${aboutHTML}</div><div class="detail"><div class="dcard">${detailHTML()}</div></div></div>`;
+}
+function detailHTML() {
+  const d = S.d;
+  if (S.sel && S.sel.startsWith("p:")) {
+    const p = d.principles.find((x) => x.id === S.sel.slice(2)); if (!p) return "";
+    const members = d.items.filter((i) => i.principle === p.id); const g = groupState(members);
+    return `<span class="dk">${esc(p.area || "Principle")} · ${p.active ? "shown to builders" : "hidden from builders — none of its items are active"}</span><h3>${esc(p.title)}</h3>
+      <p class="p">A principle groups the additions it explains. Its switch makes all of them active or inactive at once; you can still change one on its own.</p>
+      <div class="panel" style="flex-direction:row;align-items:center;justify-content:space-between"><span>${g.n} of ${g.total} active</span>${switchBtn(g.st, p.title, `data-pswitch="${esc(p.id)}"`)}</div>
+      ${p.metrics.length ? `<div class="panel"><h4>What ${esc(d.name)} measures — and what builds must reach</h4>${p.metrics.map((m) => `<div class="mrow"><span>${esc(m.label)}</span><span style="text-align:right"><strong style="font-weight:500">${esc(m.value)}</strong>${m.floor ? `<br><span style="font-size:12.5px;color:var(--mute)">builds: ${esc(m.floor)}</span>` : ""}</span></div>`).join("")}</div>` : ""}
+      <label class="f">Title<input class="field" data-ptitle="${esc(p.id)}" value="${esc(p.title)}"></label>
+      <label class="f">The principle, in your words<textarea class="field" rows="4" data-pprior="${esc(p.id)}">${esc(p.prior)}</textarea></label>
+      <div><button class="btn pri" data-psave="${esc(p.id)}">Save wording</button></div>
+      <span style="font-size:12.5px;color:var(--mute)">Builders read this as ${esc(d.name)}’s intent whenever something isn’t spelled out.</span>`;
+  }
+  const i = d.items.find((x) => x.key === S.sel) || d.items.find((x) => x.needs) || d.items[0];
+  if (!i) return `<p class="p">Nothing selected.</p>`;
+  if (!S.sel) S.sel = i.key;
+  const k = kindOf(i), isNew = i.key.startsWith("new:");
+  const Q = { move: "Rubrick captured this because it clearly differs from a typical build.", part: `One of the parts where ${d.name}’s look and behavior come together.`,
+    new: `${d.name} does this, and a typical build doesn’t. Rubrick hasn’t seen it before.`, omission: `Most apps like ${d.name} include this. ${d.name} doesn’t.` };
+  const v = i.verification || {}, r = i.result;
+  const what = i.desc || i.evidence || "";  // what it is, under the title
+  const name = S.names[i.key] ?? i.name ?? "", desc = S.descs[i.key] ?? (i.evidence || i.desc || "");
+  const run0 = d.runs[0];
+  let actions = "";
+  if (isNew && i.state === "off") actions = `<div class="panel"><label class="f">Name<input class="field" data-name="${esc(i.key)}" value="${esc(name)}"></label><label class="f">What it is<textarea class="field" rows="2" data-desc="${esc(i.key)}">${esc(desc)}</textarea></label><span style="font-size:12.5px;color:var(--mute);line-height:1.5">Rubrick learns this name for every product and writes its check from the description. Making it active applies only to ${esc(d.name)}.</span></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" data-promote="${esc(i.key)}" ${name.trim() && !S.job ? "" : "disabled"}>Name it and make active →</button>${i.needs ? `<button class="btn" data-keep="${esc(i.key)}">Keep inactive</button>` : ""}</div>`;
+  else if (i.needs) actions = `<div style="display:flex;gap:8px;flex-wrap:wrap">${i.state === "off" ? `<button class="btn pri" data-set="${esc(i.key)}" data-to="on">Make active →</button><button class="btn" data-keep="${esc(i.key)}">Keep inactive</button>` : `<button class="btn pri" data-keep="${esc(i.key)}">Looks right →</button><button class="btn" data-set="${esc(i.key)}" data-to="off">Make inactive</button>`}</div>`;
+  const means = i.section === "omit" ? (i.state === "on" ? "Builds must leave it out" : "Builds may include it") : (i.state === "on" ? (k === "part" ? "Builds need a part playing this role" : "Builds must include it") : "Known, but builds may skip it");
+  return `<span class="dk">${tip("d:k", KIND[k] || k, KIND_TIP[k] || "")} · ${tip("d:s", i.set_by === "you" ? "Set by you" : "Set by Rubrick", i.set_by === "you" ? "You set this. Recompiles never change it." : "Rubrick chose this from its evidence. A recompile may change it until you set it yourself.")}</span>
+    <h3>${esc(i.label)}</h3><p class="p">${esc(what || Q[k] || "")}</p>
+    ${drawingHTML(i)}
+    ${i.instead ? `<div class="panel"><h4>Instead, ${esc(d.name)}…</h4><span>${esc(i.instead)}</span></div>` : ""}
+    ${i.evidence && i.evidence !== what ? `<div class="panel"><h4>Evidence${i.host ? " · " + esc(i.host) : ""}</h4><span>${esc(i.evidence)}</span></div>` : ""}
+    ${i.exemplars && i.exemplars.length ? `<div class="panel"><h4>A typical build does this</h4><pre>${esc(i.exemplars[0])}</pre></div>` : ""}
+    ${i.against ? `<div class="banner warn" style="margin:0"><span>${esc(i.against)}</span></div>` : ""}
+    ${i.votes ? `<div class="panel"><h4>Typical builds</h4><span>${i.votes[0]} of the ${i.votes[1]} typical builds Rubrick generated have this.</span></div>` : ""}
+    ${actions}
+    <div class="panel" style="flex-direction:row;align-items:center;justify-content:space-between"><span><strong style="font-weight:500">${i.state === "on" ? "Active" : "Inactive"}</strong><br><span style="font-size:13px;color:var(--mute)">${means}</span></span>${isNew && i.state === "off" ? "" : switchBtn(i.state, i.label, `data-switch="${esc(i.key)}"`)}</div>
+    <div class="plain"><h4>How it’s checked</h4><span><strong style="font-weight:500">${esc(v.label || "")}</strong> — ${esc(v.detail || "")}</span></div>
+    <div class="plain"><h4>Last check</h4><span>${r ? `${r.result === "pass" ? "Passed" : r.result === "fail" ? "Failed" : "Not comparable"} in “${esc(run0.label)}” (${esc(run0.mode)}, ${ago(run0.at)})${r.detail ? ` — ${esc(r.detail)}` : ""}` : run0 ? "The last run said nothing about this item." : "No checks have been run yet. Use “Run a check”."}</span></div>`;
+}
+function builderView() {
+  const b = S.d.builder;
+  if (!b.checklist.length) return `<div class="full"><div class="box"><p class="empty" style="padding:24px 16px">Nothing for builders to read yet — recompile ${esc(S.d.name)}.</p></div></div>`;
+  const lines = b.checklist.map((l) => { const m = l.match(/^([A-Z]+(?:\/[\w-]+)?)\s+—\s+([\s\S]*)$/); return `<li class="li"><span class="chip">${esc(m ? m[1] : "")}</span><span>${esc(m ? m[2] : l)}</span></li>`; }).join("");
+  const guide = Object.entries(b.guide).map(([k, v]) => `<div class="li" style="flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:500;color:var(--ink)">${esc(k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</span><span>${esc(typeof v === "string" ? v : Array.isArray(v) ? v.join(" ") : (v.note || Object.values(v).join(" ")))}</span></div>`).join("");
+  return `<p class="blurb">This is what a coding agent reads from ${esc(S.d.name)}’s system, as of the last compile — every requirement with its why, then standing guidance.${S.d.pending ? " Your changes since then aren’t reflected yet." : ""}</p>
+    <div class="full"><div class="box"><h2 style="margin:0;padding:14px 16px 6px;font-size:22px;font-weight:500">Requirements</h2><ol style="margin:0;padding:0;list-style:none">${lines}</ol></div>
+    <div class="box"><h2 style="margin:0;padding:14px 16px 6px;font-size:22px;font-weight:500">Standing guidance</h2>${guide}</div></div>`;
+}
+function runsView() {
+  const runs = S.d.runs;
+  if (!runs.length) return `<div class="full"><div class="box"><p class="empty" style="padding:24px 16px">No checks yet. “Run a check” measures a build against ${esc(S.d.name)}’s system; coding agents’ checks through the MCP server land here too.</p></div></div>`;
+  return `<div class="full"><div class="box">${runs.map((r) => { const s = r.summary || {}; return `<div class="li" style="align-items:center"><span class="chip">${esc(r.mode)}</span><span class="grow"><strong style="font-weight:500;color:var(--ink)">${esc(r.label)}</strong><br><span style="font-size:13px;color:var(--mute)">${esc(r.candidate)} · ${ago(r.at)}</span></span><span>${s.conforming ?? 0} of ${s.records_checked ?? 0} pass${s.skipped ? ` · ${s.skipped} not comparable` : ""}</span></div>`; }).join("")}</div>
+    <p class="blurb" style="padding:0 4px">Each item’s result from the latest run appears on its row and in its detail.</p></div>`;
+}
+function learnedView() {
+  const L = S.learned;
+  if (!L) return `<div class="full"><p class="blurb">Loading…</p></div>`;
+  const dets = Object.entries(L.learned_detectors || {});
+  const vocab = [];
+  for (const [facet, words] of Object.entries(L.promoted_facets || {})) for (const [w, d] of Object.entries(words)) vocab.push([facet, w, d]);
+  for (const [w, d] of Object.entries(L.promoted_patterns || {})) vocab.push(["pattern", w, d]);
+  for (const [w, d] of Object.entries(L.promoted_treatments || {})) vocab.push(["treatment", w, d]);
+  for (const [w, d] of Object.entries(L.promoted_absences || {})) vocab.push(["omission", w, d]);
+  const sw = Object.entries(L.switches || {});
+  return `<header class="hd"><h1 style="font-size:64px">What Rubrick has learned</h1><p>Knowledge shared across every product: the names it has learned and the checks it has written. Each product’s own switches stay with that product.</p></header>
+    <div class="full" style="padding-top:24px">
+    <div class="box"><h2 style="margin:0;padding:14px 16px 6px;font-size:22px;font-weight:500">Learned names <span class="pcount">${vocab.length}</span></h2>${vocab.map(([f, w, d]) => `<div class="li"><span class="chip">${esc(f)}</span><span><strong style="font-weight:500;color:var(--ink)">${esc(w)}</strong>${d ? " — " + esc(d) : ""}</span></div>`).join("") || `<p class="empty" style="padding:8px 16px 16px">None yet. Naming a new find and making it active teaches Rubrick its name.</p>`}</div>
+    <div class="box"><h2 style="margin:0;padding:14px 16px 6px;font-size:22px;font-weight:500">Learned checks <span class="pcount">${dets.length}</span></h2>${dets.map(([k, v]) => `<div class="li" style="align-items:center"><span class="chip">${esc(v.status)}</span><span class="grow"><strong style="font-weight:500;color:var(--ink)">${esc(k)}</strong>${v.reason ? `<br><span style="font-size:13px;color:var(--mute)">${esc(v.reason)}</span>` : ""}</span>${v.status === "active" ? `<button class="btn" data-revoke="${esc(k)}">Revoke</button>` : ""}</div>`).join("") || `<p class="empty" style="padding:8px 16px 16px">None yet. Rubrick proposes a check when a newly named find is made active.</p>`}</div>
+    <div class="box"><h2 style="margin:0;padding:14px 16px 6px;font-size:22px;font-weight:500">Decisions per product</h2>${sw.map(([p, m]) => `<div class="li"><span class="chip">${esc(p)}</span><span>${Object.keys(m).length} switches set by you</span></div>`).join("") || `<p class="empty" style="padding:8px 16px 16px">No switches set yet.</p>`}</div></div>`;
+}
+// ---------------------------------------------------------------- header bento
+// Every tile is drawn from the product's own materials (ground, palette, faces, radius,
+// shadow, motion) as read from its source; a tile with nothing real to show is left out.
+function lum(hex) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})/i.exec(hex || ""); if (!m) return null;
+  let h = m[1]; if (h.length === 3) h = [...h].map((c) => c + c).join("");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+let loadedFonts = "";
+function useFonts(sp) {
+  const key = (sp.fonts || []).map((f) => f.url).join("|");
+  if (key === loadedFonts) return; loadedFonts = key;
+  let el = document.getElementById("specimen-fonts");
+  if (!el) { el = document.createElement("style"); el.id = "specimen-fonts"; document.head.appendChild(el); }
+  el.textContent = (sp.fonts || []).map((f) => `@font-face{font-family:${JSON.stringify(f.family)};src:url(${JSON.stringify(f.url)});font-weight:${f.weight};font-style:${f.style};font-display:swap}`).join("\n");
+}
+function bento() {
+  const d = S.d, sp = d.specimen || {};
+  const adds = d.items.filter((i) => i.section === "add" && i.state === "on").length;
+  const omits = d.items.filter((i) => i.section === "omit" && i.state === "on");
+  const name = `<div class="t-name"><h1>${esc(d.name)}</h1><p>${d.kind ? esc(d.kind[0].toUpperCase() + d.kind.slice(1)) + " · " : ""}${adds} additions · ${omits.length} omissions · ${d.principles.filter((p) => p.active).length} principles</p></div>`;
+  if (!sp.source || sp.source === "none") return `<header class="hd"><div class="bento">${name}</div></header>`;
+  useFonts(sp);
+  const ground = sp.ground || "#ffffff", dark = (lum(ground) ?? 1) < 0.45;
+  const ink = sp.text && Math.abs((lum(sp.text) ?? 0) - (lum(ground) ?? 1)) > 0.35 ? sp.text : dark ? "#f2f2f2" : "#1c1c1c";
+  const shipped = new Set((sp.fonts || []).map((f) => f.family));
+  const face = (role, fallback) => { const f = sp.faces?.[role]; return f ? `${JSON.stringify(f)},${fallback}` : fallback; };
+  const fDisplay = face("display", "system-ui,sans-serif"), fBody = face("body", fDisplay);
+  const fLabel = sp.faces?.label ? face("label", "ui-monospace,monospace") : fBody;  // no label face: the body face, not one the product doesn't use
+  const tile = (cls, body, style = "") => `<div class="tile ${cls}" aria-hidden="true" style="background:${esc(ground)};color:${esc(ink)};${style}">${body}</div>`;
+  const cap = (t) => `<div class="cap2" style="font-family:${esc(fLabel)}">${esc(t)}</div>`;
+  const T = {};
+
+  // type: the display face at size, the smallest size beside it at the product's ratio
+  const t = sp.type || {};
+  if (sp.faces?.display || t.ratio) {
+    const ratio = t.ratio || 1, bigPx = 128, smallPx = Math.max(9, Math.round(bigPx / ratio));
+    const faces = Object.entries(sp.faces || {}).map(([r, f]) => `${r} ${f}${shipped.has(f) ? "" : "*"}`).join(" · ");
+    const micro = `font-family:${esc(fLabel)};font-size:${Math.min(smallPx, 15)}px;letter-spacing:${t.tracking_em ?? 0.04}em;${t.upper ? "text-transform:uppercase;" : ""}opacity:.75`;
+    T["type"] = (tile("t-type", `${cap("Type" + (faces ? " · " + faces : ""))}
+      <div><div class="big" style="font-family:${esc(fDisplay)};font-size:${bigPx}px;font-weight:${t.max_weight || 600};letter-spacing:-.04em${t.upper ? ";text-transform:uppercase" : ""}">${t.upper ? "Ag" : "Aa"}<span style="font-family:${esc(fBody)};font-size:${smallPx}px;font-weight:400;letter-spacing:0;margin-left:14px;text-transform:none">Aa</span></div>
+      <div style="${micro};margin-top:14px">${t.ratio ? `size contrast ${t.ratio}×` : ""}${t.max_px ? ` · ${t.max_px} → ${t.min_px}px` : ""}${t.tracking_em ? ` · tracking ${t.tracking_em}em` : ""}</div>
+      ${faces.includes("*") ? `<div style="font-size:11.5px;opacity:.55;margin-top:8px;font-family:Figtree,sans-serif">* font file not in the folder, shown in a stand-in face</div>` : ""}</div>`));
+  }
+  // surface: a panel in the product's own radius, surface color, shadow and blur
+  if (sp.radius_px != null || sp.shadow || sp.surface || sp.blur_px) {
+    const bits = [sp.radius_px != null && `radius ${sp.radius_px}px`, sp.blur_px && `blur ${sp.blur_px}px`, sp.shadow && "shadow"].filter(Boolean).join(" · ");
+    T["surface"] = (tile("t-surface", `${cap("Surface")}
+      <div style="flex:1;min-height:70px;border-radius:${sp.radius_px ?? 12}px;background:${esc(sp.surface || (dark ? "#1a1a1a" : "#ffffff"))};${sp.edge ? `border:1px solid ${esc(sp.edge)};` : ""}${sp.shadow ? `box-shadow:${esc(sp.shadow)};` : ""}${sp.blur_px ? `backdrop-filter:blur(${sp.blur_px}px);` : ""}padding:12px 14px;font-family:${esc(fLabel)};font-size:11px;letter-spacing:.06em;line-height:1.5">${esc(bits)}</div>`));
+  }
+  // motion: a live dot in the product's own timing and easing
+  const mo = sp.motion || {};
+  if (mo.ambient?.length || mo.duration || mo.easing) {
+    const live = mo.ambient?.length > 0;
+    const dur = mo.duration ? (parseFloat(mo.duration) * (mo.duration.endsWith("ms") ? 1 : 1000) * (live ? 4 : 1)) + "ms" : "2s";
+    T["motion"] = (tile("t-motion", `${cap("Motion")}
+      <div class="pulse-dot${live ? " live" : ""}" style="background:${esc(sp.accent || ink)};--dur:${dur};${mo.easing ? `--ease:${esc(mo.easing)}` : ""}"></div>
+      <div style="font-family:${esc(fLabel)};font-size:11px;letter-spacing:.06em;opacity:.75;line-height:1.5">${esc([mo.duration, mo.easing && mo.easing.replace("cubic-bezier", "bezier"), live && mo.ambient.slice(0, 3).join(", ")].filter(Boolean).join(" · "))}</div>`));
+  }
+  // palette: colors that mark meaning get room; the neutral ramp sits lower
+  const pal = sp.palette || [];
+  if (pal.length) {
+    const marks = pal.filter((c) => c.marks).slice(0, 9), neutral = pal.filter((c) => !c.marks).slice(0, 7);
+    T["palette"] = (tile("t-palette", `${cap(`Color · ${marks.length} that mark meaning${neutral.length ? ` · ${neutral.length} neutral` : ""}`)}
+      <div class="chips">${neutral.map((c) => `<span class="chip n" title="${esc(c.name || c.value)}" style="background:${esc(c.value)}"></span>`).join("")}${marks.map((c) => `<span class="chip" title="${esc(c.name || c.value)}" style="background:${esc(c.value)}"></span>`).join("")}</div>`));
+  }
+  // omissions: what the product leaves out, in Rubrick's own voice
+  if (omits.length) {
+    T.omit = (`<div class="tile t-omit" aria-hidden="true"><div class="cap2" style="opacity:1;color:var(--mute)">Leaves out</div><div class="omits">${omits.slice(0, 8).map((o) => `<span>${esc(o.title || o.label)}</span>`).join("")}</div></div>`);
+  }
+  const sr = `<p style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);margin:0">${esc(d.name)}'s materials, read from its source: type, surface, motion, color${omits.length ? ", and what it leaves out" : ""}.</p>`;
+  const bs = Object.fromEntries((d.bento?.scenes || []).map((sc) => [sc.id, sc]));
+  const sceneTile = (sc, cls, title) => `<div class="tile t-scene ${cls}" style="background:${esc(ground)}">${sceneFrame(sc, title)}${rehChip(sc.rehearsal)}</div>`;
+  const bj = S.bentoJob;
+  const q = d.drawing_queue;
+  const toDraw = d.items.filter((it) => !d.drawings?.[it.key] || d.drawings[it.key].stale).length;
+  const drawLine = q ? progress(q.progress, q.progress?.total ? `${q.progress.done} of ${q.progress.total} drawn` : "Starting…")
+    : bj.job ? progress(null, bj.status || "Drawing the stills…")
+    : bj.error ? `<span class="pcount">Couldn’t draw the stills: ${esc(bj.error)} <button class="linkbtn" data-drawbento>Try again</button></span>`
+    : [d.bento ? `<button class="linkbtn" data-drawbento>Redraw stills</button>` : `<button class="linkbtn" data-drawall="1">Draw ${esc(d.name)}’s stills and comparisons</button>`,
+       d.bento && toDraw ? `<button class="linkbtn" data-drawall="0">Draw the ${toDraw} missing comparison${toDraw === 1 ? "" : "s"}</button>` : ""].filter(Boolean).join(" · ");
+  const nameT = name.replace("</p></div>", `</p><div>${drawLine}</div></div>`);
+  if (bs.hero) {
+    const row = [bs.part && sceneTile(bs.part, "t-part", d.name + " part"), T.type && T.type.replace("t-type", "t-type t-type-row"), T.surface, T.motion].filter(Boolean).join("");
+    return `<header class="hd">${sr}<div class="bento"><div class="bcol">${nameT}${T.palette || ""}${T.omit || ""}</div><div class="bcol">${sceneTile(bs.hero, "t-hero", d.name + " in use")}</div></div>${row ? `<div class="brow" style="margin-top:12px">${row}</div>` : ""}</header>`;
+  }
+  const small = [T.surface, T.motion].filter(Boolean).join("");
+  const left = nameT + (small ? `<div class="brow">${small}</div>` : "") + (T.palette || "");
+  const right = (T.type || "") + (T.omit || "");
+  return `<header class="hd">${sr}<div class="bento"><div class="bcol">${left}</div>${right ? `<div class="bcol">${right}</div>` : ""}</div></header>`;
+}
+
+function stickCard() {
+  const c = document.querySelector(".dcard"); if (!c) return;
+  const room = innerHeight - 32, h = c.offsetHeight;
+  c.style.top = (h > room ? innerHeight - h - 16 : 16) + "px";
+}
+// An open tooltip floats above everything (scene frames included), so no container crops it:
+// below its label when there's room, above when there isn't.
+let tipFor = null;
+function floatTip() {
+  document.querySelectorAll("body > .bubble.float").forEach((e) => e.remove());
+  const b = document.querySelector(".tipw .bubble"); tipFor = null; if (!b) return;
+  tipFor = b.previousElementSibling; b.classList.add("float"); document.body.appendChild(b); positionTip();
+}
+function positionTip() {
+  const b = document.querySelector("body > .bubble.float"); if (!b || !tipFor?.isConnected) return;
+  const r = tipFor.getBoundingClientRect(), bh = b.offsetHeight, bw = b.offsetWidth;
+  const top = r.bottom + 8 + bh <= innerHeight - 8 ? r.bottom + 8 : r.top - 8 - bh;
+  b.style.top = Math.max(8, top) + "px";
+  b.style.left = Math.max(12, Math.min(r.left, innerWidth - bw - 12)) + "px";
+}
+function render() { renderPage(); stickCard(); placeFrames(); floatTip(); maybeDraw(); }
+function renderPage() {
+  $("#rail").innerHTML = rail();
+  const m = $("#main");
+  if (S.view === "learned") { m.innerHTML = learnedView(); return; }
+  if (!S.products.length) { m.innerHTML = `<header class="hd"><h1>Rubrick</h1><p>No product systems here yet (data folder: this directory, or $RUBRICK_HOME).</p></header><div class="empty">Add a product: point Rubrick at its source, and it compiles the product’s system — what it does and what it leaves out that a typical build wouldn’t. <div style="margin-top:16px"><button class="btn pri" data-add>Add a product →</button></div></div>${banners()}`; return; }
+  if (!S.d) { m.innerHTML = `<div class="empty">Loading…</div>`; return; }
+  const head = bento();
+  const body = S.view === "builder" ? builderView() : S.view === "runs" ? runsView() : systemView();
+  m.innerHTML = head + bar() + banners() + body;
+}
+
+// ---------------------------------------------------------------- events
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button"); if (!t) { if (S.tip) { S.tip = null; render(); } return; }
+  const ds = t.dataset;
+  try {
+    if (ds.tip !== undefined) { S.tip = S.tip === ds.tip ? null : ds.tip; return render(); }
+    if (S.tip) S.tip = null;
+    if (ds.prod) { S.cur = ds.prod; history.replaceState(null, "", "#" + encodeURIComponent(ds.prod)); S.sel = null; S.view = "needs"; S.flash = null; await loadDetail(); return render(); }
+    if (ds.view) { S.view = ds.view; if (ds.view === "learned") { S.learned = await api("/api/learned"); } else if (!S.d && S.cur) await loadDetail(); return render(); }
+    if (ds.sel) { S.sel = ds.sel; S.opened = ds.sel; return render(); }
+    if (ds.redraw) return startDrawing(ds.redraw);
+    if (ds.drawbento !== undefined) return startBento();
+    if (ds.drawall !== undefined) { await api(`/api/products/${encodeURIComponent(S.cur)}/draw`, { bento: ds.drawall === "1" }); await loadDetail(); return render(); }
+    if (ds.psel) { S.sel = "p:" + ds.psel; return render(); }
+    if (ds.about !== undefined) { S.aboutOpen = !S.aboutOpen; return render(); }
+    if (ds.dismiss !== undefined) { S.flash = null; return render(); }
+    if (ds.add !== undefined) return $("#addDlg").showModal();
+    if (ds.check !== undefined) return $("#checkDlg").showModal();
+    if (ds.recompile !== undefined) return runJob(api(`/api/products/${encodeURIComponent(S.cur)}/recompile`, {}), "Recompiling…", () => { S.flash = { kind: "ok", text: `Recompiled. ${S.cur}’s system, what builders read, and every check now reflect your switches.` }; render(); });
+    const post = (action, body) => api(`/api/products/${encodeURIComponent(S.cur)}/${action}`, body);
+    if (ds.switch) { const i = S.d.items.find((x) => x.key === ds.switch); await post("switch", { key: ds.switch, state: i.state === "on" ? "off" : "on" }); S.sel = ds.switch; await refresh(); return; }
+    if (ds.set) { await post("switch", { key: ds.set, state: ds.to }); await refresh(); return; }
+    if (ds.keep) { const i = S.d.items.find((x) => x.key === ds.keep); await post("switch", { key: ds.keep, state: i.state }); await refresh(); return; }
+    if (ds.group) { const items = itemsIn(ds.group === "Additions" ? "add" : "omit"); const g = groupState(items); await post("switch", { keys: items.map((i) => i.key), state: g.st === "on" ? "off" : "on" }); await refresh(); return; }
+    if (ds.pswitch) { const items = S.d.items.filter((i) => i.principle === ds.pswitch); const g = groupState(items); await post("switch", { keys: items.map((i) => i.key), state: g.st === "on" ? "off" : "on" }); await refresh(); return; }
+    if (ds.psave) { await post("principle", { id: ds.psave, title: $(`[data-ptitle="${CSS.escape(ds.psave)}"]`).value, prior: $(`[data-pprior="${CSS.escape(ds.psave)}"]`).value }); S.flash = { kind: "ok", text: "Saved. The new wording applies on the next recompile." }; await refresh(); return; }
+    if (ds.job) { await post("job", { original: ds.job, value: ds.jobstate === "on" ? "STRIKE" : "" }); await refresh(); return; }
+    if (ds.promote) { const k = ds.promote; return runJob(post("promote", { key: k, name: S.names[k] ?? S.d.items.find((x) => x.key === k).name, description: S.descs[k] ?? (S.d.items.find((x) => x.key === k).evidence || "") }), "Teaching Rubrick the name…", (res) => { S.flash = { kind: "ok", text: "Learned and made active. " + ((res && res.detectors && res.detectors[0]) || "") + " Recompile to apply it." }; render(); }); }
+    if (ds.revoke) { await api("/api/learned/revoke", { key: ds.revoke }); S.learned = await api("/api/learned"); return render(); }
+  } catch (err) { S.flash = { kind: "err", text: err.message }; render(); }
+});
+document.addEventListener("input", (e) => {
+  const ds = e.target.dataset;
+  if (ds.name) { S.names[ds.name] = e.target.value; const b = $(`[data-promote="${CSS.escape(ds.name)}"]`); if (b) b.disabled = !e.target.value.trim() || !!S.job; }
+  if (ds.desc) S.descs[ds.desc] = e.target.value;
+});
+// folder fields: the OS picker (via the local server) + detection of what Rubrick will read
+async function detectInto(form) {
+  const repo = form.elements.repo.value.trim(), box = form.querySelector(".found");
+  if (!repo) { box.hidden = true; return; }
+  try {
+    const d = await api("/api/detect", { repo });
+    form.elements.repo.value = d.repo;
+    if (form.elements.name && !form.elements.name.value.trim()) form.elements.name.value = d.name_guess;
+    form.elements.globals_css.placeholder = d.globals_css; form.elements.components_dir.placeholder = d.components_dir;
+    const miss = [!d.found.globals_css && "a global stylesheet", !d.found.components_dir && "a components folder"].filter(Boolean);
+    box.className = "found" + (miss.length ? " warn" : "");
+    box.innerHTML = `Rubrick will read styles from <code>${esc(d.globals_css)}</code> and components from <code>${esc(d.components_dir)}</code>` +
+      (miss.length ? `. It couldn’t find ${miss.join(" or ")}; adjust below if the product has one.` : ", plus the rest of the app’s source.");
+    box.hidden = false;
+  } catch (e) { box.className = "found warn"; box.textContent = e.message; box.hidden = false; }
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-pickfolder]"); if (!b) return;
+  const form = b.closest("form"); b.disabled = true; b.textContent = "Choosing…";
+  try { const r = await api("/api/pick-folder", { prompt: form.id === "checkForm" ? "Choose the build's folder" : "Choose the product's folder" });
+        if (r.path) { form.elements.repo.value = r.path; await detectInto(form); } }
+  catch (err) { form.querySelector(".found").className = "found warn"; form.querySelector(".found").textContent = err.message; form.querySelector(".found").hidden = false; }
+  finally { b.disabled = false; b.textContent = "Choose folder…"; }
+});
+for (const id of ["addForm", "checkForm"]) $("#" + id).elements.repo.addEventListener("change", (e) => detectInto(e.target.form));
+$("#addForm").addEventListener("close", () => {});
+$("#addDlg").addEventListener("close", () => {
+  if ($("#addDlg").returnValue !== "ok") return;
+  const f = Object.fromEntries(new FormData($("#addForm")));
+  runJob(api("/api/products", f), `Compiling ${f.name}…`, () => { S.cur = f.name; S.view = "needs"; refresh(); });
+});
+$("#checkDlg").addEventListener("close", () => {
+  if ($("#checkDlg").returnValue !== "ok") return;
+  const f = Object.fromEntries(new FormData($("#checkForm")));
+  runJob(api(`/api/products/${encodeURIComponent(S.cur)}/check`, { ...f, native: !!f.native }), "Checking…", (res) => { S.view = "runs"; S.flash = { kind: "ok", text: `Check finished: ${res.summary.conforming} of ${res.summary.records_checked} pass.` }; render(); });
+});
+refresh().catch((e) => { S.flash = { kind: "err", text: e.message }; render(); });
+</script>
+</body>
+</html>

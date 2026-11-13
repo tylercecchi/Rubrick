@@ -30,19 +30,95 @@ from __future__ import annotations
 
 import pathlib
 import re
-import subprocess
 
-from rubrick.style_facets import (_all_colors, _hex_hue, gather_facet_source, max_shadow_blur,
-                          palette_max_chroma, source_dirs)
+from rubrick.style_facets import _all_colors, _hex_hue, max_shadow_blur, palette_max_chroma
 
 _GENERIC_FALLBACK_FONTS = {"sans-serif", "serif", "monospace", "system-ui", "inherit",
                            "-apple-system", "blinkmacsystemfont", "ui-sans-serif", "ui-monospace"}
 
 
-# --- measurement primitives (repo -> value), the SAME reading on every side ----------
+# --- the measurement source: one reading of the product, every spelling ---------------
+# A measure must read the SAME styling the same way however it is written: literal CSS,
+# design tokens (`border-radius: var(--radius)`), inline React styles (`borderRadius: 12`)
+# or Tailwind utilities (`rounded-xl`). A literal-only reader made a token-based product
+# read as "no rounding" — a false refusal at capture, and a missed add-back at check (a
+# flat system can't see `shadow-lg`). So every measure reads one normalized source: the
+# product's full source with custom properties / numeric constants resolved
+# (rubrick.resolve) plus Tailwind utilities translated into the equivalent CSS.
+
+_TW_RADIUS = {"none": 0, "sm": 2, "": 4, "md": 6, "lg": 8, "xl": 12, "2xl": 16, "3xl": 24, "full": 100}
+_TW_SHADOW = {"sm": 2, "": 3, "md": 6, "lg": 15, "xl": 25, "2xl": 50}
+_TW_WEIGHT = {"thin": 100, "extralight": 200, "light": 300, "normal": 400, "medium": 500,
+              "semibold": 600, "bold": 700, "extrabold": 800, "black": 900}
+_TW_HUE = {"red": "#ef4444", "orange": "#f97316", "amber": "#f59e0b", "yellow": "#eab308",
+           "lime": "#84cc16", "green": "#22c55e", "emerald": "#10b981", "teal": "#14b8a6",
+           "cyan": "#06b6d4", "sky": "#0ea5e9", "blue": "#3b82f6", "indigo": "#6366f1",
+           "violet": "#8b5cf6", "purple": "#a855f7", "fuchsia": "#d946ef", "pink": "#ec4899",
+           "rose": "#f43f5e"}
+_TW_PREFIX = r"(?<![\w-])(?:[a-z0-9]+:)*"   # variants like hover: md: dark:
+
+
+def tailwind_as_css(source: str) -> str:
+    """Synthetic CSS declarations for the Tailwind utilities in `source`, so the literal
+    measures read them. Deterministic; unknown utilities are ignored."""
+    out = []
+    for side, size in re.findall(_TW_PREFIX + r"rounded(-[trblse]{1,2})?(?:-(none|sm|md|lg|xl|2xl|3xl|full))?(?![\w-])", source):
+        out.append(f"border-radius: {_TW_RADIUS[size]}px;")
+    out += [f"border-radius: {n}px;" for n in re.findall(_TW_PREFIX + r"rounded(?:-[trblse]{1,2})?-\[(\d+(?:\.\d+)?)px\]", source)]
+    for size in re.findall(_TW_PREFIX + r"shadow(?:-(sm|md|lg|xl|2xl))?(?![\w-])", source):
+        out.append(f"box-shadow: 0 0 {_TW_SHADOW[size]}px rgba(0,0,0,.1);")
+    if re.search(_TW_PREFIX + r"bg-(?:gradient|linear|radial|conic)-", source):
+        out.append("background-image: linear-gradient(tw);")
+    out += [f"font-weight: {_TW_WEIGHT[w]};" for w in
+            re.findall(_TW_PREFIX + r"font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)(?![\w-])", source)]
+    out += [f"font-family: {f.strip()};" for f in re.findall(r"font-\[['\"]?([A-Za-z][\w ]+?)['\"]?[,\]]", source)]
+    for hue, shade in re.findall(_TW_PREFIX + r"(?:bg|text|border|ring|from|via|to|fill|stroke|outline|decoration|accent)"
+                                 r"-(" + "|".join(_TW_HUE) + r")-(\d{2,3})(?![\w-])", source):
+        if int(shade) >= 300:  # 50-200 are tints of the family, not a use of the hue
+            out.append(f"color: {_TW_HUE[hue]};")
+    if re.search(_TW_PREFIX + r"animate-(spin|ping|pulse|bounce)(?![\w-])", source):
+        out.append("animation: tw 1s infinite;")
+    return "\n".join(out)
+
+
+_STYLE_SUFFIXES = {".tsx", ".ts", ".jsx", ".js", ".css", ".scss"}
+_TW_CONFIGS = ("tailwind.config.ts", "tailwind.config.js", "tailwind.config.mjs", "tailwind.config.cjs")
+
+
+def _style_files(repo: str, gcss: str, comps: str) -> list[pathlib.Path]:
+    """Every style-bearing file the product reads from: the global stylesheet, ALL
+    source files under the shared source dirs (theme constants live in .ts files, not
+    only .tsx), and a Tailwind config — sorted, deterministic, uncapped."""
+    from rubrick.style_facets import source_dirs
+    r = pathlib.Path(repo)
+    files = [r / gcss] if (r / gcss).exists() else []
+    seen = {f.resolve() for f in files}
+    for d in source_dirs(repo, comps):
+        for f in sorted(pathlib.Path(d).rglob("*")):
+            if f.suffix in _STYLE_SUFFIXES and f.is_file() and "node_modules" not in f.parts \
+                    and f.resolve() not in seen:
+                seen.add(f.resolve())
+                files.append(f)
+    files += [r / c for c in _TW_CONFIGS if (r / c).exists()]
+    return files
+
+
+def measure_source(repo: str, gcss: str, comps: str) -> str:
+    """The normalized source every measure reads (compile, twin and check alike)."""
+    from rubrick.resolve import resolve_values
+    parts = []
+    for f in _style_files(repo, gcss, comps):
+        try:
+            parts.append(f.read_text())
+        except Exception:
+            continue
+    src = resolve_values("\n".join(parts))
+    return src + "\n/* tailwind */\n" + tailwind_as_css(src)
+
 
 def _ambient_motion(source: str) -> bool:
-    return bool(re.search(r"@keyframes|animation\s*:|animation-name|\binfinite\b", source, re.I))
+    return bool(re.search(r"@keyframes|animation\s*:|animation-name|\binfinite\b|"
+                          r"repeat\s*:\s*Infinity", source, re.I))
 
 
 def _saturated_hue_families(source: str) -> set:
@@ -54,65 +130,54 @@ def _saturated_hue_families(source: str) -> set:
     return fams
 
 
-def _grep(pattern: str, repo: str, gcss: str, comps: str) -> str:
-    r = pathlib.Path(repo)
-    targets = source_dirs(repo, comps)
-    if (r / gcss).exists():
-        targets.append(str(r / gcss))
-    try:
-        return subprocess.run(["grep", "-rhoE", pattern, *targets],
-                              capture_output=True, text=True, timeout=20).stdout
-    except Exception:
-        return ""
-
-
-def _max_radius(repo: str, gcss: str, comps: str):
-    out = _grep(r"(border-radius|borderRadius)\s*:\s*[^,;}]+", repo, gcss, comps)
-    vals = [float(n) for n in re.findall(r"(\d+(?:\.\d+)?)", out)]
+def _radius(src: str):
+    vals = []
+    for v in re.findall(r"(?:border-radius|borderRadius)\s*:\s*([^;,}\n]+)", src, re.I):
+        vals += [float(n) for n in re.findall(r"(\d+(?:\.\d+)?)", v)]
     vals = [v for v in vals if v <= 200]
     return max(vals) if vals else None
 
 
-def _font_families(repo: str, gcss: str, comps: str) -> int:
-    from rubrick.type_extract import gather_type_source
-    src = gather_type_source(repo, gcss, comps)
+def _families(src: str):
+    """Distinct NAMED typefaces — CSS/inline font-family (first family of each stack),
+    @font-face names, next/font imports. None when none is named: unknown, never a
+    silent 'one face' (that read every token-defined product as single-face)."""
     fams = set()
-    for m in re.findall(r"font-?family\s*:\s*[\"']?([^;,\"'\n}]+)", src, re.I):
-        fams.add(m.strip().lower())
-    fams = {f for f in fams if f and f not in _GENERIC_FALLBACK_FONTS}
-    return len(fams) if fams else 1  # system-font-only reads as a single (system) voice
+    for m in re.findall(r"font-?family\s*:\s*([^;}\n]+)", src, re.I):
+        first = m.split(",")[0].strip().strip("\"'` ")
+        if first:
+            fams.add(first.lower())
+    for imp in re.findall(r"import\s*\{([^}]*)\}\s*from\s*['\"]next/font/google['\"]", src):
+        fams |= {n.strip().replace("_", " ").lower() for n in imp.split(",") if n.strip()}
+    fams = {f for f in fams if f and f not in _GENERIC_FALLBACK_FONTS and not f.startswith("var(")}
+    return len(fams) if fams else None
 
 
-def _font_weights(repo: str, gcss: str, comps: str) -> int:
-    from rubrick.facet_signatures import raw_source
-    src = raw_source(repo, gcss, comps)
+def _weights(src: str) -> int:
     ws = {w.lower() for w in re.findall(r"font-?weight\s*:\s*[\"']?(\d{3}|bold|normal)", src, re.I)}
-    ws |= set(re.findall(r"\bfont-(thin|light|normal|medium|semibold|bold|extrabold|black)\b", src))
     return len(ws)
 
 
-def _has_transition(repo: str, gcss: str, comps: str) -> bool:
-    from rubrick.facet_signatures import raw_source
-    src = raw_source(repo, gcss, comps)
+def _has_transition(src: str) -> bool:
     return bool(re.search(r"transition(-property)?\s*:(?!\s*['\"]?none)|"
                           r"\btransition(-all|-colors|-opacity|-transform)?(?=[\s\"'])|"
                           r"<motion\.|AnimatePresence", src))
 
 
-def _color_src(repo, gcss, comps):
-    return gather_facet_source(repo, gcss, comps, "color")
+def _m(fn):
+    return lambda r, g, c: fn(measure_source(r, g, c))
 
 
 MEASURES = {
-    "shadow_blur": lambda r, g, c: max_shadow_blur(gather_facet_source(r, g, c, "elevation")),
-    "palette_chroma": lambda r, g, c: palette_max_chroma(_color_src(r, g, c)),
-    "hue_families": lambda r, g, c: len(_saturated_hue_families(_color_src(r, g, c))),
-    "has_gradient": lambda r, g, c: bool(re.search(r"gradient\(", _color_src(r, g, c), re.I)),
-    "max_radius": _max_radius,
-    "font_families": _font_families,
-    "font_weights": _font_weights,
-    "has_ambient_motion": lambda r, g, c: _ambient_motion(gather_facet_source(r, g, c, "ambient")),
-    "has_transition": _has_transition,
+    "shadow_blur": _m(max_shadow_blur),
+    "palette_chroma": _m(palette_max_chroma),
+    "hue_families": _m(lambda s: len(_saturated_hue_families(s))),
+    "has_gradient": _m(lambda s: bool(re.search(r"gradient\(", s, re.I))),
+    "max_radius": _m(_radius),
+    "font_families": _m(_families),
+    "font_weights": _m(_weights),
+    "has_ambient_motion": _m(_ambient_motion),
+    "has_transition": _m(_has_transition),
 }
 MEASURE_DESCRIPTIONS = {
     "shadow_blur": "deepest drop-shadow blur in px (none = no shadows)",
@@ -120,7 +185,7 @@ MEASURE_DESCRIPTIONS = {
     "hue_families": "number of distinct saturated hue families (30° bins)",
     "has_gradient": "true if any gradient() fill exists",
     "max_radius": "largest border-radius in px (none = no rounding declared)",
-    "font_families": "number of distinct named typefaces (system-only counts as 1)",
+    "font_families": "number of distinct named typefaces (none = no named face found: unknown)",
     "font_weights": "number of distinct font weights used",
     "has_ambient_motion": "true if any perpetual/keyframe animation exists",
     "has_transition": "true if any state-change transition is declared",
@@ -165,7 +230,7 @@ def validate_measure(det: dict) -> str | None:
 # name -> {detector, note, violation}. `violation` is optional prose for the check report.
 BUILTINS = {
     "elevation-shadow": {
-        "detector": {"measure": "shadow_blur", "zeroed": "none | < 8", "added": ">= 20"},
+        "detector": {"measure": "shadow_blur", "zeroed": "none | < 8", "added": ">= 12"},
         "note": "deliberately FLAT — no drop-shadow depth (separation by hairlines, not elevation)",
         "violation": "the system is deliberately flat (no drop-shadow depth), but the build adds "
                      "{v}px shadows — elevation the identity refuses (violation by excess)",

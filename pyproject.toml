@@ -28,6 +28,8 @@ dev = []
 # The primary interface: launch the MCP server (get_product_system / check_conformance /
 # compile_product_system / apply_review). Register this command with an MCP client.
 rubrick-mcp = "rubrick.rubrick_mcp:main"
+# The local app and CLI: `rubrick ui` opens the review/toggle app in a browser.
+rubrick = "rubrick.cli:main"
 
 # The core library is the `rubrick` package under src/. The dev layer (probes/, eval_harness.py)
 # and runtime data (systems/, learned.json, .cache/ — resolved via rubrick.paths / RUBRICK_HOME)
@@ -37,3 +39,7 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# the local app's page ships inside the package
+rubrick = ["ui/*.html", "ui/stage/*.js", "ui/stage/*.css"]

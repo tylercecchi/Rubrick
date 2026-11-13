@@ -321,9 +321,9 @@ def _admit_measure(spec: dict, calibration_repo: tuple | None,
                 f"({spec['zeroed']}) — the product does not omit this by that measure")
     ev = read(spec, _exemplar_repo(exemplars, calibration_repo[1], calibration_repo[2]),
               calibration_repo[1], calibration_repo[2])
-    if zeroed(spec, ev):
-        return (f"the generic exemplars read {ev!r}, which is still 'zeroed' — the measure "
-                f"does not see the thing in a generic build")
+    if not added(spec, ev):  # must POSITIVELY read as having it — "unknown" is not "has it"
+        return (f"the generic exemplars read {ev!r}, which does not meet 'added' "
+                f"({spec['added']}) — the measure does not see the thing in a generic build")
     return None
 
 
@@ -422,6 +422,25 @@ def propose_absence_detector(name: str, description: str, evidence: str,
 def _measure_docs() -> dict:
     from rubrick.subtractions import MEASURE_DESCRIPTIONS
     return MEASURE_DESCRIPTIONS
+
+
+def revoke_detector(key: str) -> bool:
+    """Revoke a learned detector ('kind:name') — it stops gating everywhere immediately
+    (only status='active' ever gates). For an absence:<builtin> key with no learned entry,
+    records a revocation that removes the built-in from the registry. Returns True if a
+    change was made."""
+    d = learned.load()
+    dets = d.setdefault("learned_detectors", {})
+    ent = dets.get(key)
+    if ent is None:
+        from rubrick.subtractions import BUILTINS
+        if not (key.startswith("absence:") and key.split(":", 1)[1] in BUILTINS):
+            return False
+        ent = dets[key] = {"spec": None, "calibrated_on": ""}
+    ent["status"] = "revoked"
+    learned.save(d)
+    _memo["mtime"] = "stale"
+    return True
 
 
 def record_detector(kind: str, name: str, spec: dict | None, status: str,

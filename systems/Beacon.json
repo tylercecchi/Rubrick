@@ -1,49 +1,50 @@
 {
   "dispositions": {
-    "typography-as-brand-voice": {
-      "prior": "treat type as the primary identity carrier, so distinctive faces and expressive contrast do the branding work themselves",
-      "calibrated": {}
+    "typographic-hierarchy-as-signal": {
+      "prior": "When readings must be grasped at a glance, type that dramatizes scale and voice lets the vital numbers register instantly while labels recede into quiet support",
+      "calibrated": {},
+      "title": "Type that ranks what matters"
     },
-    "meaning-first-color": {
-      "prior": "Color should encode meaning and identity rather than decorate, so every hue maps to a concept, state, or accent that communicates intent.",
-      "calibrated": {}
+    "color-as-information": {
+      "prior": "When color is derived from what's being observed and encodes meaning, the person reads state at a glance instead of decoding a legend.",
+      "calibrated": {},
+      "title": "Color that carries meaning"
     },
-    "airy-minimalism": {
-      "prior": "prioritize open space and lightweight layering so content breathes and feels effortless, unconstrained, and premium",
-      "calibrated": {}
+    "immersive-spatial-canvas": {
+      "prior": "when the view fills the whole surface and content breathes, the operator reads the full field of signals at a glance without a frame competing for attention",
+      "calibrated": {},
+      "title": "Canvas that holds everything"
     },
-    "always-in-motion": {
-      "prior": "Signal that the product is alive and present by keeping subtle, self-sustaining motion running in the background, so presence is felt without demanding attention or interaction.",
-      "calibrated": {}
+    "ambient-liveness-signals-presence": {
+      "prior": "When a view shows real-time activity, continuous ambient motion reassures the person that the system is live and watching, not frozen or stale.",
+      "calibrated": {},
+      "title": "Motion that signals liveness"
     },
-    "depth-through-light-not-lines": {
-      "prior": "Convey hierarchy and elevation by simulating how light, shadow, and translucency behave in physical space rather than using explicit borders or dividers.",
-      "calibrated": {}
+    "depth-conveys-signal-priority": {
+      "prior": "Floating, layered surfaces let urgent details rise above the field so the operator instantly reads what demands attention and what sits in context.",
+      "calibrated": {},
+      "title": "Depth that signals priority"
     },
-    "tactile-realism": {
-      "prior": "surfaces should evoke physical material presence so interfaces feel believable and touchable",
+    "tactile-surface-realism": {
+      "prior": "A surface that catches light feels physical and present, so the focal object reads as a real instrument worth trusting",
       "calibrated": {
         "light_source": "top",
         "overlay_alpha_ceiling": 0.5
-      }
+      },
+      "title": "Material that feels tangible"
     },
-    "friction-over-refusal": {
-      "prior": "When a user acts against retention, slow and soften rather than deny\u2014preserve the relationship by adding cost and acknowledgment instead of hard blocks.",
-      "calibrated": {
-        "ceremony_scale_ms": 6000.0,
-        "enter_ratio": 1.0
-      }
-    },
-    "friction-over-freedom": {
-      "prior": "When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+    "transitions-as-narrated-events": {
+      "prior": "When state changes are choreographed rather than swapped, the person can trust what shifted and follow it without losing their place.",
       "calibrated": {
         "ceremony_scale_ms": 857.1,
         "enter_ratio": 1.0
-      }
+      },
+      "title": "Narrate every state change"
     },
-    "canvas-centric-layering": {
-      "prior": "anchor everything to one central canvas and layer contextual panels and overlays onto it, so a single spatial frame stays the stable reference point for all information",
-      "calibrated": {}
+    "spatial-canvas-primacy": {
+      "prior": "When the work is to grasp many live signals at once, a single immersive field keeps everything in view while details surface in context rather than replacing the whole.",
+      "calibrated": {},
+      "title": "One living canvas"
     }
   },
   "surfaces": [
@@ -55,7 +56,7 @@
         "sheen",
         "texture"
       ],
-      "because": "tactile-realism",
+      "because": "tactile-surface-realism",
       "prevalence": 0.5
     }
   ],
@@ -69,7 +70,7 @@
         "motion-ack",
         "multi-phase"
       ],
-      "because": "friction-over-refusal",
+      "because": "transitions-as-narrated-events",
       "exit_ms": 300,
       "enter_ms": 300
     },
@@ -82,7 +83,7 @@
         "motion-ack",
         "multi-phase"
       ],
-      "because": "friction-over-refusal",
+      "because": "transitions-as-narrated-events",
       "exit_ms": 300,
       "enter_ms": 300
     },
@@ -94,7 +95,7 @@
         "manufactured-latency",
         "multi-phase"
       ],
-      "because": "friction-over-freedom",
+      "because": "transitions-as-narrated-events",
       "exit_ms": 300,
       "enter_ms": 300
     }
@@ -110,7 +111,7 @@
         "treated-microtype",
         "type-as-graphic"
       ],
-      "because": "typography-as-brand-voice",
+      "because": "typographic-hierarchy-as-signal",
       "concrete": {
         "values": {
           "faces": {
@@ -161,7 +162,7 @@
         "expressive-accent",
         "semantic-status-color"
       ],
-      "because": "meaning-first-color",
+      "because": "color-as-information",
       "concrete": {
         "anchors": [
           "#aab4cc",
@@ -258,7 +259,7 @@
         "full-bleed-canvas",
         "generous-hero-space"
       ],
-      "because": "airy-minimalism",
+      "because": "immersive-spatial-canvas",
       "concrete": {
         "anchors": [],
         "moves": {
@@ -286,7 +287,7 @@
         "presence-signal",
         "rotation-spin"
       ],
-      "because": "always-in-motion",
+      "because": "ambient-liveness-signals-presence",
       "concrete": {
         "anchors": [],
         "moves": {
@@ -319,7 +320,7 @@
         "layered-overlays",
         "soft-floating-shadows"
       ],
-      "because": "depth-through-light-not-lines",
+      "because": "depth-conveys-signal-priority",
       "concrete": {
         "anchors": [],
         "moves": {
@@ -349,7 +350,7 @@
     "archetype": "central-canvas",
     "focal_anchor": "radar-canvas",
     "composition": "overlaid-panels",
-    "because": "canvas-centric-layering"
+    "because": "spatial-canvas-primacy"
   },
   "components": [
     {
@@ -411,17 +412,556 @@
   "observed_patterns": [],
   "capabilities": [],
   "observed_absences": [],
+  "catalog": [
+    {
+      "key": "typography:custom-display-face",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "custom-display-face",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "typography:distinct-body-face",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "distinct-body-face",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "typography:expressive-weight",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "expressive-weight",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "typography:extreme-scale-contrast",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "extreme-scale-contrast",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "typography:treated-microtype",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "treated-microtype",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "typography:type-as-graphic",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "type-as-graphic",
+      "area": "typography",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "color:entity-driven-color",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "entity-driven-color",
+      "area": "color",
+      "principle": "color-as-information"
+    },
+    {
+      "key": "color:expressive-accent",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "expressive-accent",
+      "area": "color",
+      "principle": "color-as-information"
+    },
+    {
+      "key": "color:semantic-status-color",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "semantic-status-color",
+      "area": "color",
+      "principle": "color-as-information"
+    },
+    {
+      "key": "density:floating-overlays",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "floating-overlays",
+      "area": "density",
+      "principle": "immersive-spatial-canvas"
+    },
+    {
+      "key": "density:full-bleed-canvas",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "full-bleed-canvas",
+      "area": "density",
+      "principle": "immersive-spatial-canvas"
+    },
+    {
+      "key": "density:generous-hero-space",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "generous-hero-space",
+      "area": "density",
+      "principle": "immersive-spatial-canvas"
+    },
+    {
+      "key": "ambient:breathing-pulse",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "breathing-pulse",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "ambient:drift-scroll",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "drift-scroll",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "ambient:perpetual-loop",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "perpetual-loop",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "ambient:physics-loop",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "physics-loop",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "ambient:presence-signal",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "presence-signal",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "ambient:rotation-spin",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "rotation-spin",
+      "area": "ambient",
+      "principle": "ambient-liveness-signals-presence"
+    },
+    {
+      "key": "elevation:backdrop-blur",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "backdrop-blur",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "elevation:colored-shadow",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "colored-shadow",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "elevation:dramatic-shadow",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "dramatic-shadow",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "elevation:inset-depth",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "inset-depth",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "elevation:layered-overlays",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "layered-overlays",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "elevation:soft-floating-shadows",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "soft-floating-shadows",
+      "area": "elevation",
+      "principle": "depth-conveys-signal-priority"
+    },
+    {
+      "key": "component:beacon-canvas",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "beacon-canvas",
+      "why": "click: 0/3, spotlight-filter: 0/3",
+      "principle": "spatial-canvas-primacy"
+    },
+    {
+      "key": "component:beacon-card",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "beacon-card",
+      "why": "click: 0/3",
+      "principle": "spatial-canvas-primacy"
+    },
+    {
+      "key": "component:page",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "page",
+      "why": "drag: 0/3",
+      "principle": "spatial-canvas-primacy"
+    },
+    {
+      "key": "surface:focal-entity",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "focal-entity",
+      "principle": "tactile-surface-realism"
+    },
+    {
+      "key": "rule:browse",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "browse",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "rule:rest",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "rest",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "rule:toggle",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "toggle",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "composition",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "central-canvas",
+      "principle": "spatial-canvas-primacy"
+    },
+    {
+      "key": "new:typography:tabular-mono-numerals",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "tabular-mono-numerals",
+      "new": true,
+      "evidence": "BeaconMono labels use font-variant-numeric: tabular-nums for aligned numeric data",
+      "principle": "typographic-hierarchy-as-signal"
+    },
+    {
+      "key": "new:color:lit-focal-object-color-separation",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "lit-focal-object-color-separation",
+      "new": true,
+      "evidence": "material comment 'the lit focal object' with top-lit gradient (#1b2233\u2192#0d1119), bevel highlights and neutral dramatic float shadow \u2014 deliberately keeps the focal object neutral so hue is reserved for signal/entity marking",
+      "principle": "color-as-information"
+    },
+    {
+      "key": "new:behavior:treatment:ambient-radar-loop",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "ambient-radar-loop",
+      "new": true,
+      "evidence": "@keyframes beacon-sweep { from rotate(0deg) to rotate(360deg) } applied to the .sweep conic-gradient field as a perpetual anchor animation",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "new:behavior:treatment:perpetual-marquee",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "perpetual-marquee",
+      "new": true,
+      "evidence": "@keyframes signal-drift translateX(0) to translateX(-50%) on the .ticker \u2014 a continuously drifting base ticker with no state change",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "new:absence:confidence-meter",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "confidence-meter",
+      "new": true,
+      "evidence": "No `.conf` bar or any proportional fill for confidence exists in the product; the confidence row renders only a value cell.",
+      "instead": "a plain text data-row that lists confidence alongside origin/vector/eta",
+      "host": "DetailPanel confidence data-row",
+      "confidence": "high",
+      "principle": null
+    },
+    {
+      "key": "new:absence:icon-glyphs",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "icon-glyphs",
+      "new": true,
+      "evidence": "The product uses no glyph affordances (no \u00d7, no \u203a chevron) anywhere \u2014 close is a worded button and rows carry no chevron marker.",
+      "instead": "a text label (\"CLOSE\") standing in for the dismiss glyph",
+      "host": "DetailPanel CLOSE button",
+      "confidence": "high",
+      "principle": null
+    },
+    {
+      "key": "new:absence:status-badge",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "status-badge",
+      "new": true,
+      "evidence": "No `.badge` class, chip, or bordered status pill appears anywhere in the product \u2014 searched CSS, inline style; status surfaces only as raw text.",
+      "instead": "inline colored status text next to the signal id, reinforced by the hue of the presence dot",
+      "host": "BeaconCard status line (`{signal.id} \u00b7 {signal.status}`)",
+      "confidence": "high",
+      "principle": null
+    },
+    {
+      "key": "new:absence:sync-bar",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "sync-bar",
+      "new": true,
+      "evidence": "No `.syncbar` or any width-driven fill meter for sync exists in the product; sync appears only as a number in the drifting ticker string.",
+      "instead": "inline percentage text in the ticker",
+      "host": "BeaconCanvas ticker (`SECTOR SYNC 99.4%`)",
+      "confidence": "high",
+      "principle": null
+    },
+    {
+      "key": "new:pattern:timed-arm-commit",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "timed-arm-commit",
+      "new": true,
+      "evidence": "activate() pushes a sequence of timers: setPhase('committed') at ARM, then setOpen(true)/setPhase('idle') at ARM+BEAT \u2014 a single click drives a self-progressing phase machine ('idle'\u2192'committed'\u2192open) rather than an instant toggle, with onClick={open ? dismiss : activate} switching behavior once armed.",
+      "component": "BeaconCard.tsx",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "new:pattern:pointer-scrub-track",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "pointer-scrub-track",
+      "new": true,
+      "evidence": "onPointerDown captures the pointer (setPointerCapture) and sets held; onPointerMove={(e)=>held && scrubTo(e.clientX)} maps continuous pointer X position along a track ref to scrubT; onPointerUp releases \u2014 dragging along an axis continuously sets a scalar value.",
+      "component": "page.tsx",
+      "principle": "transitions-as-narrated-events"
+    },
+    {
+      "key": "new:elevation:top-lit-directional-bevel",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "top-lit-directional-bevel",
+      "new": true,
+      "evidence": "Explicit comment '/* lighting: lit from the top, falling into cool shadow */' with box-shadow combining 'inset 0 2px 0 rgba(255,255,255,0.10) /* bevel: top edge catches light */' and 'inset 0 -1px 0 rgba(0,0,0,0.55)' \u2014 a directional two-edge inset bevel simulating a consistent overhead light source, distinct from a plain recessed inset.",
+      "principle": "depth-conveys-signal-priority"
+    }
+  ],
+  "principles": [
+    {
+      "id": "typographic-hierarchy-as-signal",
+      "title": "Type that ranks what matters",
+      "prior": "When readings must be grasped at a glance, type that dramatizes scale and voice lets the vital numbers register instantly while labels recede into quiet support",
+      "active": true
+    },
+    {
+      "id": "color-as-information",
+      "title": "Color that carries meaning",
+      "prior": "When color is derived from what's being observed and encodes meaning, the person reads state at a glance instead of decoding a legend.",
+      "active": true
+    },
+    {
+      "id": "immersive-spatial-canvas",
+      "title": "Canvas that holds everything",
+      "prior": "when the view fills the whole surface and content breathes, the operator reads the full field of signals at a glance without a frame competing for attention",
+      "active": true
+    },
+    {
+      "id": "ambient-liveness-signals-presence",
+      "title": "Motion that signals liveness",
+      "prior": "When a view shows real-time activity, continuous ambient motion reassures the person that the system is live and watching, not frozen or stale.",
+      "active": true
+    },
+    {
+      "id": "depth-conveys-signal-priority",
+      "title": "Depth that signals priority",
+      "prior": "Floating, layered surfaces let urgent details rise above the field so the operator instantly reads what demands attention and what sits in context.",
+      "active": true
+    },
+    {
+      "id": "tactile-surface-realism",
+      "title": "Material that feels tangible",
+      "prior": "A surface that catches light feels physical and present, so the focal object reads as a real instrument worth trusting",
+      "active": true
+    },
+    {
+      "id": "transitions-as-narrated-events",
+      "title": "Narrate every state change",
+      "prior": "When state changes are choreographed rather than swapped, the person can trust what shifted and follow it without losing their place.",
+      "active": true
+    },
+    {
+      "id": "spatial-canvas-primacy",
+      "title": "One living canvas",
+      "prior": "When the work is to grasp many live signals at once, a single immersive field keeps everything in view while details surface in context rather than replacing the whole.",
+      "active": true
+    }
+  ],
+  "about": {
+    "kind": "a live operations monitoring console for tracking real-time signals",
+    "jobs": [
+      {
+        "original": "see the total count of active signals",
+        "need": "see the total count of active signals"
+      },
+      {
+        "original": "see signals grouped by region or sector",
+        "need": "see signals grouped by region or sector"
+      },
+      {
+        "original": "select a signal to inspect its details",
+        "need": "inspect a signal's details (origin, vector, eta, confidence)"
+      },
+      {
+        "original": "see the status of each signal",
+        "need": "see the status of each signal"
+      },
+      {
+        "original": "see how many active items a signal has",
+        "need": "see how many active items a signal has"
+      },
+      {
+        "original": "scrub back through the signal history timeline",
+        "need": "review signal activity at an earlier point in time"
+      },
+      {
+        "original": "see the time offset into the past being viewed",
+        "need": "know how far back in time the view is showing"
+      },
+      {
+        "original": "dismiss a signal's details",
+        "need": "dismiss a signal's details"
+      }
+    ]
+  },
   "_checklist": [
-    "COMPOSITION \u2014 organize around a central-canvas spine.  WHY: anchor everything to one central canvas and layer contextual panels and overlays onto it.",
-    "TYPOGRAPHY \u2014 carry the moves ['custom-display-face', 'distinct-body-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] \u00b7 DEPLOYMENT: reserve ['custom-display-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] for the focal moments \u2014 the source deploys sparingly ('custom-display-face' in ~20% of source files, 'expressive-weight' in ~20% of source files, 'extreme-scale-contrast' in ~20% of source files, 'treated-microtype' in ~20% of source files, 'type-as-graphic' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: treat type as the primary identity carrier.",
-    "COLOR \u2014 carry the moves ['entity-driven-color', 'expressive-accent', 'semantic-status-color'] \u00b7 APPLICATION: keep ['semantic'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: Color should encode meaning and identity rather than decorate.",
-    "DENSITY \u2014 carry the moves ['floating-overlays', 'full-bleed-canvas', 'generous-hero-space'].  WHY: prioritize open space and lightweight layering so content breathes and feels effortless, unconstrained, and premium.",
-    "AMBIENT \u2014 carry the moves ['breathing-pulse', 'drift-scroll', 'perpetual-loop', 'physics-loop', 'presence-signal', 'rotation-spin'] \u00b7 DEPLOYMENT: reserve ['breathing-pulse', 'drift-scroll', 'perpetual-loop', 'physics-loop', 'presence-signal', 'rotation-spin'] for the focal moments \u2014 the source deploys sparingly ('breathing-pulse' in ~20% of source files, 'drift-scroll' in ~20% of source files, 'perpetual-loop' in ~20% of source files, 'physics-loop' in ~20% of source files, 'presence-signal' in ~20% of source files, 'rotation-spin' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: Signal that the product is alive and present by keeping subtle, self-sustaining motion running in the background.",
-    "ELEVATION \u2014 carry the moves ['backdrop-blur', 'colored-shadow', 'dramatic-shadow', 'inset-depth', 'layered-overlays', 'soft-floating-shadows'] \u00b7 DEPLOYMENT: reserve ['backdrop-blur', 'colored-shadow', 'layered-overlays'] for the focal moments \u2014 the source deploys sparingly ('backdrop-blur' in ~20% of source files, 'colored-shadow' in ~20% of source files, 'layered-overlays' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: Convey hierarchy and elevation by simulating how light, shadow, and translucency behave in physical space rather than using explicit borders or dividers.",
-    "SURFACE/focal-entity \u2014 a materially-rich focal object (layers ['bevel', 'lighting', 'sheen', 'texture']).  WHY: surfaces should evoke physical material presence so interfaces feel believable and touchable.",
-    "BEHAVIOR/browse \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'motion-ack', 'multi-phase'] at ~300ms.  WHY: When a user acts against retention, slow and soften rather than deny\u2014preserve the relationship by adding cost and acknowledgment instead of hard blocks.",
-    "BEHAVIOR/rest \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'motion-ack', 'multi-phase'] at ~300ms.  WHY: When a user acts against retention, slow and soften rather than deny\u2014preserve the relationship by adding cost and acknowledgment instead of hard blocks.",
-    "BEHAVIOR/toggle \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'multi-phase'] at ~300ms.  WHY: When users try to disengage, keep them nominally in control while raising the cost of exit\u2014so retention is preserved without an explicit block.",
+    "COMPOSITION \u2014 organize around a central-canvas spine.  WHY: When the work is to grasp many live signals at once, a single immersive field keeps everything in view while details surface in context rather than replacing the whole.",
+    "TYPOGRAPHY \u2014 carry the moves ['custom-display-face', 'distinct-body-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] \u00b7 DEPLOYMENT: reserve ['custom-display-face', 'expressive-weight', 'extreme-scale-contrast', 'treated-microtype', 'type-as-graphic'] for the focal moments \u2014 the source deploys sparingly ('custom-display-face' in ~20% of source files, 'expressive-weight' in ~20% of source files, 'extreme-scale-contrast' in ~20% of source files, 'treated-microtype' in ~20% of source files, 'type-as-graphic' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: When readings must be grasped at a glance, type that dramatizes scale and voice lets the vital numbers register instantly while labels recede into quiet support.",
+    "COLOR \u2014 carry the moves ['entity-driven-color', 'expressive-accent', 'semantic-status-color'] \u00b7 APPLICATION: keep ['semantic'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: When color is derived from what's being observed and encodes meaning, the person reads state at a glance instead of decoding a legend.",
+    "DENSITY \u2014 carry the moves ['floating-overlays', 'full-bleed-canvas', 'generous-hero-space'].  WHY: when the view fills the whole surface and content breathes, the operator reads the full field of signals at a glance without a frame competing for attention.",
+    "AMBIENT \u2014 carry the moves ['breathing-pulse', 'drift-scroll', 'perpetual-loop', 'physics-loop', 'presence-signal', 'rotation-spin'] \u00b7 DEPLOYMENT: reserve ['breathing-pulse', 'drift-scroll', 'perpetual-loop', 'physics-loop', 'presence-signal', 'rotation-spin'] for the focal moments \u2014 the source deploys sparingly ('breathing-pulse' in ~20% of source files, 'drift-scroll' in ~20% of source files, 'perpetual-loop' in ~20% of source files, 'physics-loop' in ~20% of source files, 'presence-signal' in ~20% of source files, 'rotation-spin' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: When a view shows real-time activity, continuous ambient motion reassures the person that the system is live and watching, not frozen or stale.",
+    "ELEVATION \u2014 carry the moves ['backdrop-blur', 'colored-shadow', 'dramatic-shadow', 'inset-depth', 'layered-overlays', 'soft-floating-shadows'] \u00b7 DEPLOYMENT: reserve ['backdrop-blur', 'colored-shadow', 'layered-overlays'] for the focal moments \u2014 the source deploys sparingly ('backdrop-blur' in ~20% of source files, 'colored-shadow' in ~20% of source files, 'layered-overlays' in ~20% of source files); a reserved move applied everywhere stops reading as identity.  WHY: Floating, layered surfaces let urgent details rise above the field so the operator instantly reads what demands attention and what sits in context.",
+    "SURFACE/focal-entity \u2014 a materially-rich focal object (layers ['bevel', 'lighting', 'sheen', 'texture']).  WHY: A surface that catches light feels physical and present.",
+    "BEHAVIOR/browse \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'motion-ack', 'multi-phase'] at ~300ms.  WHY: When state changes are choreographed rather than swapped, the person can trust what shifted and follow it without losing their place.",
+    "BEHAVIOR/rest \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'motion-ack', 'multi-phase'] at ~300ms.  WHY: When state changes are choreographed rather than swapped, the person can trust what shifted and follow it without losing their place.",
+    "BEHAVIOR/toggle \u2014 an interaction carrying ['demote-not-remove', 'interaction-lock', 'manufactured-latency', 'multi-phase'] at ~300ms.  WHY: When state changes are choreographed rather than swapped, the person can trust what shifted and follow it without losing their place.",
     "COMPONENT/beacon-canvas \u2014 Build a component that opens as a layer over the canvas, carrying material [lighting, sheen] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, motion-ack, multi-phase] and embodying the pattern(s) 'spotlight-filter' (selecting one member of a collection spotlights it while the rest demote (fade/dim) in place) \u2014 combine the aesthetic and the interaction in the SAME object.",
     "COMPONENT/beacon-card \u2014 Build a component that expands attached to its trigger (a dropdown/disclosure), carrying material [bevel, lighting, sheen, texture] and hosting interaction [demote-not-remove, interaction-lock, manufactured-latency, multi-phase] \u2014 combine the aesthetic and the interaction in the SAME object.",
     "COMPONENT/page \u2014 On drag, it builds a component that sits inline, hosting interaction [demote-not-remove, interaction-lock, motion-ack, reactive-continuous, spring-physics] Triggered by drag."

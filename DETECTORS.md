@@ -127,6 +127,18 @@ verbs on domain objects with every mechanism stripped by prompt, and the product
   captured unless the designer marks `capture` (a refusal and a never-needed look identical in code);
 - no twin (no API key) → captured, marked `baseline: unavailable`.
 
+**One measurement source, every spelling.** Measures read `subtractions.measure_source`: every
+style-bearing file under the source dirs (`.ts` theme constants too, not only `.tsx`) plus a
+Tailwind config, with custom properties and numeric constants resolved (`resolve.resolve_values`)
+and Tailwind utilities translated into the equivalent CSS (`tailwind_as_css`: radius, shadow,
+gradients, weights, named faces, hue families, `animate-*`). A literal-only reader made a
+token-based product read as "no rounding" — a false refusal at capture and a missed add-back at
+check (a flat system couldn't see `shadow-lg`). The eval requires literal / token / inline /
+Tailwind spellings of the same styling to measure identically. The typeface count returns
+*unknown* (None) when no face is named, never a silent "one face"; a measure detector's generic
+exemplars must positively read as `added`, since unknown is not "has it". The flat-system
+add-back threshold is 12px blur (standard drop shadows such as Tailwind `shadow-lg`, 15px, count).
+
 Records embed their detector, so `check_subtractions` is self-contained and LLM-free; manifests
 from before the unification (built-ins stored by name) resolve through `BUILTINS`. The open
 channel (`absences.py`) finds what the registry doesn't know yet:
@@ -214,6 +226,23 @@ fixture after edits with no design meaning (a comment, a renamed local) and coun
 decisions: 2 flips before sticky jobs (every twin regenerated — majority voting couldn't help), 0
 after, with one twin or three. (Stability came from sticky jobs; three twins guard against a single
 generation's quirk deciding a capture, which this probe doesn't isolate.)
+
+## Switches — a product system is toggled, not edited
+
+Every candidate Rubrick finds is an item with a switch: **active** or **inactive**, in one of two
+sections — **additions** (builds must include it) and **omissions** (builds must leave it out). The
+manifest's `catalog` lists every item with its `default`, `state` and `set_by` (rubrick | you);
+the records hold only ACTIVE items, so checks read only what's active. Defaults come from the
+evidence: clear differences start active; uncertain ones (survey finds, minority-vote omissions,
+default-for-purpose gestures, new finds) start inactive until the designer turns them on.
+
+**Scope rule.** A product's own decisions are stored **per product** (`learned.switches[product]`,
+plus principle wording, description overrides and interaction-purpose corrections); learned
+**knowledge** — promoted vocabulary, detectors, effect locality — stays **global**. Legacy global
+CAPTURE/DISCARD intent decisions still apply as a fallback. The review file's `switches` section
+takes `on | off | keep` per item; a new find activates through `pending_promotions` (it needs a
+name, which becomes global vocabulary) and is made active for that product only. Changes apply on
+the next compile. The eval proves it end to end on a real compile (`_switches_ok`).
 
 ## What the detectors read (coverage)
 

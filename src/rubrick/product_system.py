@@ -55,6 +55,7 @@ class Disposition:
     id: str
     prior: str
     params: dict = field(default_factory=dict)  # calibrated constants (operative)
+    title: str = ""  # a short human title ("Type that commands attention")
 
     @property
     def calibrated(self) -> bool:
@@ -568,6 +569,46 @@ class ComponentRecord:
                                + (f" Triggered by {self.gesture}." if self.gesture in _DISTINCTIVE_GESTURES else ".")}
 
 
+# ---- measured magnitudes, in plain words, with the floor a build must meet ------------
+# Mirrors StyleRecord.check_metrics exactly (same factors), so the UI and the gate agree.
+_METRIC_INFO = {
+    "scale_contrast_ratio": ("Size contrast", "{v}×", "at least {f}×", lambda v: round(v * 0.75, 1)),
+    "micro_tracking_em": ("Small-label letter spacing", "{v}em", "at least {f}em", lambda v: round(v * 0.7, 3)),
+    "max_weight": ("Heaviest weight", "{v}", "at least {f}", lambda v: int(v - 100)),
+    "accent_chroma": ("Accent saturation", "{v}", "at least {f}", lambda v: round(v * 0.75)),
+    "density_spacing_px": ("Typical spacing", "{v}px", "at most {f}px", lambda v: round(v * 1.5, 1)),
+    "content_density": ("Content per component", "{v}", "at least {f}", lambda v: round(v * 0.4, 1)),
+    "shadow_depth_px": ("Deepest shadow", "{v}px", "at least {f}px", lambda v: round(v * 0.7, 1)),
+    "spacing_discipline": ("Spacing rigor", "{v}", "at least {f}", lambda v: round(v - 0.2, 2)),
+    "palette_coherence": ("Palette coherence", "{v}", "at least {f}", lambda v: round(v - 0.3, 2)),
+    "background_tonality": ("Ground", "{v}", "{f}", None),
+}
+_METRIC_GATED = {  # when the check applies at all (some floors only bind for committed systems)
+    "content_density": lambda v: v >= 30, "spacing_discipline": lambda v: v >= 0.85,
+    "palette_coherence": lambda v: v >= 0.75}
+
+
+def describe_metrics(metrics: dict) -> list[dict]:
+    """[{key, label, value, floor, checked}] for a style record's measured magnitudes —
+    what the product measures and what a build must reach (checked=False: measured, but
+    the gate doesn't bind at this level)."""
+    out = []
+    for key, (label, vfmt, ffmt, floor) in _METRIC_INFO.items():
+        v = metrics.get(key)
+        if v is None or isinstance(v, (dict, list)):
+            continue
+        if key == "background_tonality":
+            ground = "dark" if v <= 0.4 else "light" if v >= 0.6 else "mid-tone"
+            out.append({"key": key, "label": label, "value": f"{ground} ({v})",
+                        "floor": f"builds must also be {ground}" if ground != "mid-tone" else "",
+                        "checked": ground != "mid-tone"})
+            continue
+        checked = bool(v) and _METRIC_GATED.get(key, lambda _: True)(v)
+        out.append({"key": key, "label": label, "value": vfmt.format(v=v),
+                    "floor": ffmt.format(f=floor(v)) if checked else "", "checked": checked})
+    return out
+
+
 @dataclass
 class ProductSystem:
     dispositions: dict[str, Disposition]
@@ -588,6 +629,17 @@ class ProductSystem:
     # promoted-but-not-yet-gated deliberate OMISSIONS this product maintains (the open
     # subtractive channel, rubrick.absences): instructed, verified once a detector is admitted.
     observed_absences: list = field(default_factory=list)
+    # every switchable item in the product's system, ACTIVE or not, with its default and who
+    # set it — {key, section: add|omit, default, state: on|off, set_by: rubrick|you, ...}.
+    # The records above hold only active items, so checks read only what's active.
+    catalog: list = field(default_factory=list)
+    # every principle generated for the product — {id, title, prior, active} — including ones
+    # whose items are all inactive (those are not shown to builders; `dispositions` holds the
+    # active ones). Catalog items reference their principle by id.
+    principles: list = field(default_factory=list)
+    # what the product is FOR, as Rubrick described it: {kind, jobs: [{original, need}]} —
+    # the description the generic twins are built from (not part of the system itself)
+    about: dict = field(default_factory=dict)
 
     def surface_for(self, role: str):
         return next((s for s in self.surfaces if s.applies_to == role), None)
@@ -612,7 +664,8 @@ class ProductSystem:
 
     def emit_manifest(self) -> dict:
         m = {
-            "dispositions": {d.id: {"prior": d.prior, "calibrated": d.params}
+            "dispositions": {d.id: {"prior": d.prior, "calibrated": d.params,
+                                    **({"title": d.title} if d.title else {})}
                              for d in self.dispositions.values()},
             "surfaces": [{"applies_to": s.applies_to, "requires": sorted(s.required_roles),
                           "because": s.disposition.id, "prevalence": s.prevalence}
@@ -635,6 +688,9 @@ class ProductSystem:
             "observed_patterns": self.observed_patterns,
             "capabilities": self.capabilities,
             "observed_absences": self.observed_absences,
+            "catalog": self.catalog,
+            "principles": self.principles,
+            "about": self.about,
         }
         m["_checklist"] = self._checklist()
         m["_guide"] = self._guide()
@@ -816,7 +872,7 @@ def load_product_system(path: str) -> ProductSystem:
     surface/behavior record runs its quantitative checks; an uncalibrated one
     degrades to feature-presence checks (see Disposition.calibrated)."""
     m = json.loads(pathlib.Path(path).read_text())
-    disps = {i: Disposition(i, d["prior"], d.get("calibrated", {}))
+    disps = {i: Disposition(i, d["prior"], d.get("calibrated", {}), title=d.get("title", ""))
              for i, d in m["dispositions"].items()}
     styles = [StyleRecord(s["facet"], set(s["identity_moves"]), disps[s["because"]],
                           concrete=s.get("concrete", {}), metrics=s.get("metrics", {}),
@@ -843,4 +899,7 @@ def load_product_system(path: str) -> ProductSystem:
                          subtractions=m.get("subtractions", []),
                          observed_patterns=m.get("observed_patterns", []),
                          capabilities=m.get("capabilities", []),
-                         observed_absences=m.get("observed_absences", []))
+                         observed_absences=m.get("observed_absences", []),
+                         catalog=m.get("catalog", []),
+                         principles=m.get("principles", []),
+                         about=m.get("about", {}))

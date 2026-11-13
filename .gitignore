@@ -51,3 +51,10 @@ AGENT_MEMORY.md
 #  - systems/*.json — only the synthetic eval-fixture systems (Beacon/Restrained/Generic) live here
 #    and are TRACKED. The distributed package never includes them (pyproject ships the `rubrick`
 #    package under src/ only, so a wheel carries no systems). See systems/README.md.
+
+# check-run history (per machine)
+runs/
+systems/targets.json
+stage/node_modules/
+scenes/
+systems/*.review.json

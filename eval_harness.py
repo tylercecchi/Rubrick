@@ -257,7 +257,7 @@ def _measure_absence_ok() -> bool:
     legacy = [{"omits": "flat-color", "note": "FLAT-COLOR — solid fills only, no gradients"}]
     grad = _twin({"src/app/globals.css": ".hero { background: linear-gradient(#f00, #00f) }"})
     return (admit_absence(good, "", ex, [], cal) is None
-            and "still 'zeroed'" in (admit_absence(one_face, "", ex, [], cal) or "")
+            and "does not meet 'added'" in (admit_absence(one_face, "", ex, [], cal) or "")
             and "unknown measure" in (admit_absence(bad_measure, "", ex, [], cal) or "")
             and "calibration repo" in (admit_absence(good, "", ex, [], None) or "")
             and bool(check_subtractions(legacy, *grad))
@@ -338,6 +338,336 @@ def _baseline_logic_ok() -> bool:
     sticky = (same and one["jobs"] == ["move a task", "archive a task"]
               and split["jobs"] == prev["jobs"])  # a removal needs every chunk to agree
     return vote and gesture and jobs == ["add a task", "audit changes"] and hosts and sticky
+
+
+def _measure_spellings_ok() -> bool:
+    """Every omission measure reads the SAME styling the same way however it's written —
+    literal CSS, design tokens (var(--x)), inline React styles, Tailwind utilities — and a
+    plain build reads as having none of it. (A literal-only reader made a token-based
+    product read as "no rounding": a false refusal at capture, a missed add-back at check.)"""
+    from rubrick.subtractions import BUILTINS, MEASURES, added, zeroed
+    forms = {
+        "literal": _twin({"src/app/globals.css": ".a{border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);"
+                          "background:linear-gradient(#3b82f6,#22c55e);font-family:'Inter';font-weight:600;"
+                          "animation:p 2s infinite}\n.b{font-family:'Fraunces';font-weight:700;color:#3b82f6}",
+                          "src/components/A.tsx": "export const A = () => <div className='a' />"}),
+        "tokens": _twin({"src/app/globals.css": ":root{--r:12px;--sh:0 8px 24px rgba(0,0,0,.2);"
+                         "--g:linear-gradient(#3b82f6,#22c55e);--f1:'Inter';--f2:'Fraunces';--w1:600;--w2:700;"
+                         "--blue:#3b82f6}\n.a{border-radius:var(--r);box-shadow:var(--sh);background:var(--g);"
+                         "font-family:var(--f1);font-weight:var(--w1);animation:p 2s infinite}\n"
+                         ".b{font-family:var(--f2);font-weight:var(--w2);color:var(--blue)}",
+                         "src/components/A.tsx": "export const A = () => <div className='a' />"}),
+        "inline": _twin({"src/components/A.tsx": 'export const A = () => <div style={{ borderRadius: 12, '
+                         'boxShadow: "0 8px 24px rgba(0,0,0,.2)", background: "linear-gradient(#3b82f6, #22c55e)", '
+                         'fontFamily: "Inter", fontWeight: 600, animation: "p 2s infinite" }}><h1 style={{ '
+                         'fontFamily: "Fraunces", fontWeight: 700, color: "#3b82f6" }} /></div>'}),
+        "tailwind": _twin({"src/components/A.tsx": 'import { Inter, Fraunces } from "next/font/google";\n'
+                           'export const A = () => <div className="rounded-xl shadow-lg bg-gradient-to-r '
+                           'from-blue-500 to-green-500 font-semibold animate-pulse"><h1 className="font-bold '
+                           'text-blue-600" /></div>'}),
+    }
+    plain = _twin({"src/app/globals.css": ".a{padding:8px;color:#333}",
+                   "src/components/A.tsx": "export const A = () => <div className='a'>hi</div>"})
+    for name, ent in BUILTINS.items():
+        det = ent["detector"]
+        if name in ("single-hue", "single-face"):
+            continue  # "exactly one" omissions: covered by the counts below
+        if not all(added(det, MEASURES[det["measure"]](*f)) for f in forms.values()):
+            return False
+        if not zeroed(det, MEASURES[det["measure"]](*plain)):
+            return False
+    counts = {k: (MEASURES["hue_families"](*f), MEASURES["font_families"](*f), MEASURES["font_weights"](*f))
+              for k, f in forms.items()}
+    return (len(set(counts.values())) == 1 and counts["literal"] == (2, 2, 2)
+            and MEASURES["font_families"](*plain) is None)
+
+
+def _principles_ok() -> bool:
+    """Principles: a business motive the product never states is flagged (and isn't when
+    its own jobs name it); interactions sharing most moves share ONE principle (Beacon's
+    browse vs toggle); a designer's rewording is scoped to its product, legacy unscoped
+    wording still applies. Temp learned store; the real one is untouched."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import learned
+    from rubrick.orchestrate import motive_flag, similar_moves
+    flags = (motive_flag("keep them nominally in control while raising the cost of exit")
+             and motive_flag("slow and soften to preserve retention")
+             and not motive_flag("selecting a signal is a deliberate, ceremonial act")
+             and not motive_flag("protect retention of patient records", ["ensure retention of records"]))
+    browse = {"demote-not-remove", "interaction-lock", "manufactured-latency", "motion-ack", "multi-phase"}
+    toggle = browse - {"motion-ack"}
+    group = similar_moves(browse, toggle) and not similar_moves(browse, {"spring-physics", "reactive-continuous"})
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    try:
+        learned.record_rationale("ceremony", "Beacon wording", product="Beacon")
+        learned.record_rationale("legacy-id", "old global wording")
+        scoped = (learned.rationale("ceremony", product="Beacon") == "Beacon wording"
+                  and learned.rationale("ceremony", product="Ledger") is None
+                  and learned.rationale("legacy-id", product="Ledger") == "old global wording")
+    finally:
+        learned._F = orig
+    return bool(flags) and group and scoped
+
+
+def _switches_ok() -> bool:
+    """Per-product switches, end to end on a real compile: a captured move switched OFF
+    leaves the records (so checks stop requiring it), an uncertain omission switched ON
+    joins them, a captured one switched OFF leaves; the catalog keeps every item with its
+    state and who set it; another product is unaffected; the product still self-conforms.
+    Temp learned store; the real one is untouched."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import detectors, learned
+    rrepo, rg = PRODUCTS["Restrained"]
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    detectors._memo["mtime"] = "stale"
+    try:
+        learned.record_switch("Restrained", "density:information-dense", "off")
+        learned.record_switch("Restrained", "absence:flat-color", "on")
+        learned.record_switch("Restrained", "absence:elevation-shadow", "off")
+        ps = compile_product_system(rrepo, rg, _COMPS, [], "Restrained")
+        other = compile_product_system(rrepo, rg, _COMPS, [], "SomeOtherProduct")
+        moves = lambda x, f: next((st.required_features for st in x.styles if st.facet == f), set())
+        omits = lambda x: {o["omits"] for o in x.subtractions}
+        cat = {c["key"]: c for c in ps.catalog}
+        applied = ("information-dense" not in moves(ps, "density")
+                   and "flat-color" in omits(ps) and "elevation-shadow" not in omits(ps))
+        recorded = (cat["density:information-dense"]["state"] == "off"
+                    and cat["density:information-dense"]["set_by"] == "you"
+                    and cat["absence:flat-color"]["state"] == "on"
+                    and cat["absence:single-hue"]["set_by"] == "rubrick")
+        isolated = ("information-dense" in moves(other, "density")
+                    and "elevation-shadow" in omits(other) and "flat-color" not in omits(other))
+        r = check_conformance(rrepo, rg, _COMPS, "eval:switches", ps, native=False)["_summary"]
+        return applied and recorded and isolated and r["conforming"] == r["records_checked"]
+    finally:
+        learned._F = orig
+        detectors._memo["mtime"] = "stale"
+
+
+def _system_detail_ok() -> bool:
+    """What the UI shows beyond switches: principles carry titles; every active addition
+    belongs to a principle (omissions don't); magnitudes describe the gate's own floors;
+    verification states come out right (incl. a rejected check); check runs persist and map
+    to catalog items; revoking a detector (or a built-in omission) takes effect. Temp learned
+    store and temp runs dir; the real ones are untouched."""
+    import os
+    import pathlib as _pl
+    import tempfile
+    from rubrick import detectors, learned
+    from rubrick.product_system import describe_metrics
+    from rubrick.runs import item_result, load_runs, record_run
+    from rubrick.status import verification
+    from rubrick.subtractions import registry
+    b = ensure_system("Beacon")
+    titled = all(p.get("title") for p in b.principles) and len(b.principles) >= 3
+    by_facet = {st.facet: st.disposition.id for st in b.styles}
+    adds = [c for c in b.catalog if c["section"] == "add" and c["state"] == "on"]
+    member = (all(c.get("principle") for c in adds)
+              and all(c["principle"] == by_facet[c["key"].split(":")[0]]
+                      for c in adds if c["key"].split(":")[0] in by_facet)
+              and all(not c.get("principle") for c in b.catalog if c["section"] == "omit"))
+    typo = next(st for st in b.styles if st.facet == "typography")
+    mets = {m["key"]: m for m in describe_metrics(typo.metrics)}
+    magn = "scale_contrast_ratio" in mets and mets["scale_contrast_ratio"]["floor"].startswith("at least")
+    report = check_conformance(*PRODUCTS["Generic"], _COMPS, "eval:runs", b, native=False)
+    orig, home = learned._F, os.environ.get("RUBRICK_HOME")
+    tmp = _pl.Path(tempfile.mkdtemp())
+    learned._F = tmp / "learned.json"
+    detectors._memo["mtime"] = "stale"
+    os.environ["RUBRICK_HOME"] = str(tmp)
+    try:
+        states = (verification("color:expressive-accent")["state"] == "semantic"
+                  and verification("density:full-bleed-canvas")["state"] == "gated"
+                  and verification("new:pattern:pointer-scrub-track")["state"] == "none"
+                  and verification("absence:elevation-shadow")["state"] == "gated")
+        detectors.record_detector("pattern", "pointer-scrub-track", None, "rejected", "eval", reason="too loose")
+        rejected = verification("new:pattern:pointer-scrub-track")["state"] == "rejected"
+        record_run("Beacon", PRODUCTS["Generic"][0], False, report)
+        run = load_runs("Beacon")[0]
+        items = (item_result(run, "typography:custom-display-face")["result"] == "fail"
+                 and item_result(run, "component:beacon-card")["result"] == "not-comparable"
+                 and run["mode"] == "posture")
+        detectors.record_detector("pattern", "sync-scroll", {"all": ["onScroll"], "none": []}, "active", "eval")
+        revoked = (detectors.revoke_detector("pattern:sync-scroll")
+                   and "sync-scroll" not in detectors.learned_names("pattern")
+                   and detectors.revoke_detector("absence:flat-color") and "flat-color" not in registry())
+        return titled and member and magn and states and rejected and items and revoked
+    finally:
+        learned._F = orig
+        detectors._memo["mtime"] = "stale"
+        if home is None:
+            os.environ.pop("RUBRICK_HOME", None)
+        else:
+            os.environ["RUBRICK_HOME"] = home
+
+
+def _ui_ok() -> bool:
+    """The local app (`rubrick ui`): its server lists products, returns a product with the
+    fields the page renders, shows a flipped switch immediately, flags changes waiting for a
+    recompile, serves the page, and refuses non-local hosts and non-JSON posts. It also finds a
+    folder's stylesheet and components on its own, draws the header specimen from the product's
+    real source, and never serves a file from outside the product's folder. Runs in-process on a
+    throwaway copy of the data; no model calls."""
+    import json as _j
+    import os
+    import pathlib as _pl
+    import shutil
+    import tempfile
+    import threading
+    import urllib.error
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+    from rubrick import learned
+    from rubrick.ui.server import Handler
+    tmp = _pl.Path(tempfile.mkdtemp())
+    (tmp / "systems").mkdir()
+    shutil.copy(_SYS / "Beacon.json", tmp / "systems" / "Beacon.json")
+    old_home, old_f = os.environ.get("RUBRICK_HOME"), learned._F
+    os.environ["RUBRICK_HOME"] = str(tmp)
+    learned._F = tmp / "learned.json"
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+    def call(path, body=None, ctype="application/json", host=None):
+        req = urllib.request.Request(base + path, data=None if body is None else _j.dumps(body).encode(),
+                                     headers={"Content-Type": ctype, **({"Host": host} if host else {})})
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+    try:
+        st, page = call("/")
+        prods = _j.loads(call("/api/products")[1])
+        d = _j.loads(call("/api/products/Beacon")[1])
+        key = next(i["key"] for i in d["items"] if i["section"] == "add" and i["state"] == "on")
+        call("/api/products/Beacon/switch", {"key": key, "state": "off"})
+        d2 = _j.loads(call("/api/products/Beacon")[1])
+        flipped = next(i for i in d2["items"] if i["key"] == key)
+        fx = str(_pl.Path(__file__).parent / "tests/fixtures/rubrick-beacon")
+        found = _j.loads(call("/api/detect", {"repo": fx})[1])
+        (tmp / "systems" / "targets.json").write_text(_j.dumps({"Beacon": {
+            "repo": fx, "globals_css": found["globals_css"], "components_dir": found["components_dir"]}}))
+        sp = _j.loads(call("/api/products/Beacon")[1])["specimen"]
+        escape = call("/api/products/Beacon/font?f=../../../pyproject.toml")[0]
+        specimen_ok = (found["found"] == {"globals_css": True, "components_dir": True}
+                       and sp["source"] == "code" and sp["ground"] == "#080b12"
+                       and sp["accent"] == "#ff4d1f" and sp["type"]["ratio"] == 15.3
+                       and sp["faces"].get("display") == "BeaconGrotesk" and escape == 404)
+        return (specimen_ok and st == 200 and b"Rubrick" in page
+                and [p["name"] for p in prods] == ["Beacon"] and prods[0]["has_catalog"]
+                and d["kind"] and d["principles"] and d["builder"]["checklist"]
+                and all("verification" in i and "label" in i for i in d["items"])
+                and flipped["state"] == "off" and flipped["set_by"] == "you" and d2["pending"]
+                and call("/api/products/Beacon/switch", {"key": key, "state": "on"}, host="evil.example")[0] == 403
+                and call("/api/products/Beacon/switch", {"key": key, "state": "on"}, ctype="text/plain")[0] == 415)
+    finally:
+        httpd.shutdown()
+        learned._F = old_f
+        if old_home is None:
+            os.environ.pop("RUBRICK_HOME", None)
+        else:
+            os.environ["RUBRICK_HOME"] = old_home
+
+
+def _scenes_ok() -> bool:
+    """Faux UI: Rubrick's scene page + bundled runtime mount a real Stageshow scene (the
+    vendored dark-bento gold, converted to the scene form Claude writes) in headless Chrome,
+    and the product look maps the specimen onto the kit's tokens. No model calls. Skips (passes)
+    only when Chrome isn't installed."""
+    import re as _re
+    import subprocess
+    from rubrick import scenes
+    chrome = scenes._chrome()
+    if not chrome:
+        return True
+    ex = scenes.STAGESHOW / "examples" / "dark-bento"
+    code = _re.sub(r"^import .*$", "", (ex / "index.tsx").read_text(), flags=_re.M)
+    scene = {"id": "gold", "code": code.replace("export default function DarkBento", "function Scene"),
+             "css": (ex / "bento.css").read_text()}
+    look, theme = scenes.look_css({"ground": "#080b12", "text": "#eef2fb", "accent": "#ff4d1f",
+                                   "faces": {"display": "BeaconGrotesk"}, "radius_px": 18, "palette": []})
+    srv = scenes._RehearsalServer(None)
+    try:
+        srv.pages["/scene/gold.css"] = scene["css"].encode()
+        srv.pages["/scene/gold.html"] = scenes.scene_html(scene, css_href="/scene/gold.css",
+                                                          origin=srv.origin, look=look).encode()
+        dom = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--virtual-time-budget=5000",
+                              "--dump-dom", srv.origin + "/scene/gold.html"],
+                             capture_output=True, text=True, timeout=90).stdout
+    finally:
+        srv.close()
+    return ('data-scene="mounted"' in dom and "ss-stage" in dom and "data-scene-error" not in dom
+            and "Sunday Slow" in dom and theme == "dark" and "--ss-canvas: #080b12" in look
+            and '"BeaconGrotesk"' in look)
+
+
+def _draw_system_ok() -> bool:
+    """Drawing a system after compile: every item gets a comparison, the page can see the
+    queue and its progress (stills + each comparison, done of total) while it runs, and a second run redraws nothing (drawings are fingerprinted against
+    their evidence). The model step is replaced by a fast fake; no model calls, no Chrome."""
+    import json as _j
+    import os
+    import pathlib as _pl
+    import shutil
+    import tempfile
+    import threading
+    import time
+    from rubrick import learned, scenes
+    from rubrick.ui import server
+    tmp = _pl.Path(tempfile.mkdtemp())
+    (tmp / "systems").mkdir()
+    shutil.copy(_SYS / "Beacon.json", tmp / "systems" / "Beacon.json")
+    old_home, old_f = os.environ.get("RUBRICK_HOME"), learned._F
+    os.environ["RUBRICK_HOME"] = str(tmp)
+    learned._F = tmp / "learned.json"
+    real_draw, real_bento = scenes.make_drawing, scenes.make_bento
+    calls, seen_queue, gate = [], [], threading.Event()
+
+    def fake_drawing(name, m, items, item, sp, target, log=print):
+        gate.wait(5)
+        calls.append(item["key"])
+        doc = {"made_at": "now", "key": item["key"], "look": "", "fingerprint": scenes.drawing_fingerprint(item, sp),
+               "ref": scenes._key_file(name, item["key"]).stem,
+               "scenes": [{"id": "product", "code": "", "css": ""}, {"id": "typical", "code": "", "css": ""}]}
+        scenes._save(scenes._key_file(name, item["key"]), doc)
+        return doc
+    scenes.make_drawing = fake_drawing
+    scenes.make_bento = lambda *a, **k: {"scenes": []}
+    try:
+        n_items = len(server.detail("Beacon")["items"])
+        server.start_drawing_system("Beacon")
+        time.sleep(0.5)
+        q = server.detail("Beacon")["drawing_queue"]
+        seen_queue.append(bool(q and len(q["keys"]) == n_items and q["progress"]["total"] == n_items + 1))
+        gate.set()
+        for _ in range(100):
+            if not server._drawing_queue("Beacon"):
+                break
+            time.sleep(0.1)
+        first = len(calls)
+        job = next(j for j in server._JOBS.values() if j.get("tag") == "draw:Beacon")
+        seen_queue.append(job.get("progress") == {"done": n_items + 1, "total": n_items + 1})
+        drawn = server.detail("Beacon")["drawings"]
+        server.start_drawing_system("Beacon", bento=False)
+        for _ in range(50):
+            if not server._drawing_queue("Beacon"):
+                break
+            time.sleep(0.1)
+        return (seen_queue == [True, True] and first == n_items and len(drawn) == n_items
+                and not any(v["stale"] for v in drawn.values()) and len(calls) == n_items)
+    finally:
+        scenes.make_drawing, scenes.make_bento = real_draw, real_bento
+        learned._F = old_f
+        if old_home is None:
+            os.environ.pop("RUBRICK_HOME", None)
+        else:
+            os.environ["RUBRICK_HOME"] = old_home
 
 
 def run() -> bool:
@@ -429,6 +759,20 @@ def run() -> bool:
           _survey_triage_ok())
     check("twin baseline: majority vote, purpose-level gesture check, job overrides",
           _baseline_logic_ok())
+    check("omission measures read literal / token / inline / Tailwind styling identically",
+          _measure_spellings_ok())
+    check("principles: invented motives flagged, shared behavior merged, rewrites scoped",
+          _principles_ok())
+    check("switches: per product, inactive drops a requirement, active adds one, no leaks",
+          _switches_ok())
+    check("system detail: titles, membership, magnitudes, verification, runs, revoke",
+          _system_detail_ok())
+    check("local app: products, detail, live switches, pending flag, folder detection, specimen, local-only + JSON-only",
+          _ui_ok())
+    check("faux UI: the scene page + Stageshow runtime mount a real scene in Chrome, look from the specimen",
+          _scenes_ok())
+    check("drawing a system: every item drawn after compile, queue visible, unchanged items not redrawn",
+          _draw_system_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok
