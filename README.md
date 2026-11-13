@@ -173,8 +173,8 @@ regression guard is `eval_harness.py` in the repo root. Key entry points:
 - **A styling source Rubrick can read** — plain **CSS files**, **inline style objects**
   (`style={{…}}`), or **Tailwind** (the `tailwind.config` theme + utility classes). No particular one
   is required; Tailwind is supported but optional (a graceful no-op if you don't use it).
-- **Inputs** — a globals CSS file and a components directory. Defaults are `src/app/globals.css` and
-  `src/components`; pass `globals_css` / `components_dir` if yours differ. Coverage goes beyond the
+- **Inputs** — the product's folder. Rubrick finds its global stylesheet and components directory
+  itself (`discover.detect_layout`); pass `globals_css` / `components_dir` only to override. Coverage goes beyond the
   components dir: every scanner reads one shared discovery list — the components dir **plus**
   `src/app`, `src/lib`, and `src/styles` — so identity living in a page or shared module is observed
   too, and a recompile after new pages/components are added can't silently miss them (the compile
@@ -262,8 +262,7 @@ designer review → `apply_review`; see `learned.json`.)
 **Sample prompt** (paste to a coding agent with the Rubrick MCP server registered):
 
 > Using the Rubrick MCP server, compile a product system from the designed product at
-> `/path/to/DesignedProduct` — call `compile_product_system` with `name="MyProduct"`,
-> `globals_css="src/app/globals.css"`, `components_dir="src/components"`. It's slow (many model
+> `/path/to/DesignedProduct` — call `compile_product_system` with `name="MyProduct"`. It's slow (many model
 > calls); run it once. When it finishes, show me the `_checklist` and the dispositions so I can see
 > what identity it captured. If it returns a `_review` (novel moves with no vocabulary word yet),
 > list them so I can decide which to promote via `apply_review`.
@@ -298,6 +297,40 @@ violations until conformant.
 > `check_conformance(..., native=True)`."_
 
 ---
+
+### 5. Review and toggle it (the local app)
+
+```bash
+rubrick ui            # opens http://localhost:7317 — data from $RUBRICK_HOME or this folder
+```
+
+A product system is **toggled, not edited**. Every addition (what the product does that a
+typical build doesn't) and omission (what it leaves out that a typical build includes) has a
+switch; active items are required, inactive ones are known but not required. Rubrick sets each
+switch from its evidence — anything it isn't sure about starts inactive and shows under **Needs a
+look** — and your switches are kept per product and never overwritten by a recompile.
+
+The app also shows each principle's measured magnitudes and the floor a build must reach, how
+every item is checked (by code, by a model read, or instructed only), the latest check result
+per item, **what builders read** (the agent-facing checklist), the history of check runs, and
+**what Rubrick has learned** across products (names and checks, with revoke). Each product's
+header is a bento drawn in its own materials — palette, faces and type scale, radius, shadow,
+motion timing, and what it leaves out — read from its source. Add a product (a name and a
+folder, chosen with the system folder picker), recompile, and run a check from the app; changes apply on the next recompile. It is a small
+standard-library server bound to localhost — no extra dependencies, nothing leaves the machine
+except the model calls a compile already makes.
+
+**Faux UI.** The header's lead tiles and each item's "this product vs a typical build"
+drawing are animated faux UI drawn with [Stageshow](https://github.com/benjitaylor/skills/tree/main/stageshow)
+(MIT, vendored under `stage/` — see `stage/VENDORED.md`). Claude writes each scene against
+the kit from the product's real source and compiled system, in the product's measured look;
+Rubrick then films it with Stageshow's own `film.mjs --gate` in headless Chrome and sends the
+gate's faults and a contact sheet back for up to two fixes. After each compile from the app,
+a background job draws the header's stills and every item's comparison (three at a time) while
+the page stays usable; recompiles redraw only items whose evidence changed. An item opened
+before its drawing exists is drawn on the spot. Scenes run in sandboxed frames that can't reach the network.
+Rehearsal needs Node and Chrome: `cd stage && npm install`. Without them scenes are still drawn,
+marked "Not rehearsed".
 
 ## Development
 
