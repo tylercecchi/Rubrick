@@ -37,7 +37,9 @@ def emit_review(ps, name: str, path: str,
                    **{k: p[k] for k in ("confidence", "host", "instead", "against", "category",
                                  "exemplars", "near_misses") if p.get(k)},
                    "decision": "", "as": "", "description": ""} for p in pending]
-    dispositions = [{"id": d.id, "prior": d.prior, "refined": ""}
+    flags = getattr(ps, "_disp_flags", {})
+    dispositions = [{"id": d.id, "prior": d.prior, "refined": "",
+                     **({"check": flags[d.id]} if d.id in flags else {})}
                     for d in ps.dispositions.values()]
     intent = [{"subject": i["subject"], "captured": i["captured"],
                **({"why": i["why"]} if i.get("why") else {}), "decision": ""}
@@ -84,7 +86,7 @@ def apply_review(path: str) -> dict:
     for it in data.get("refine_dispositions", []):
         r = (it.get("refined") or "").strip()
         if r:
-            learned.record_rationale(it["id"], r)
+            learned.record_rationale(it["id"], r, product=data.get("system", ""))
             refined.append(it["id"])
     for it in data.get("confirm_intent", []):
         dec = (it.get("decision") or "").strip().lower()

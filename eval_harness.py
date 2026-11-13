@@ -382,6 +382,35 @@ def _measure_spellings_ok() -> bool:
             and MEASURES["font_families"](*plain) is None)
 
 
+def _principles_ok() -> bool:
+    """Principles: a business motive the product never states is flagged (and isn't when
+    its own jobs name it); interactions sharing most moves share ONE principle (Beacon's
+    browse vs toggle); a designer's rewording is scoped to its product, legacy unscoped
+    wording still applies. Temp learned store; the real one is untouched."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import learned
+    from rubrick.orchestrate import motive_flag, similar_moves
+    flags = (motive_flag("keep them nominally in control while raising the cost of exit")
+             and motive_flag("slow and soften to preserve retention")
+             and not motive_flag("selecting a signal is a deliberate, ceremonial act")
+             and not motive_flag("protect retention of patient records", ["ensure retention of records"]))
+    browse = {"demote-not-remove", "interaction-lock", "manufactured-latency", "motion-ack", "multi-phase"}
+    toggle = browse - {"motion-ack"}
+    group = similar_moves(browse, toggle) and not similar_moves(browse, {"spring-physics", "reactive-continuous"})
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    try:
+        learned.record_rationale("ceremony", "Beacon wording", product="Beacon")
+        learned.record_rationale("legacy-id", "old global wording")
+        scoped = (learned.rationale("ceremony", product="Beacon") == "Beacon wording"
+                  and learned.rationale("ceremony", product="Ledger") is None
+                  and learned.rationale("legacy-id", product="Ledger") == "old global wording")
+    finally:
+        learned._F = orig
+    return bool(flags) and group and scoped
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -473,6 +502,8 @@ def run() -> bool:
           _baseline_logic_ok())
     check("omission measures read literal / token / inline / Tailwind styling identically",
           _measure_spellings_ok())
+    check("principles: invented motives flagged, shared behavior merged, rewrites scoped",
+          _principles_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

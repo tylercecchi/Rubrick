@@ -68,14 +68,18 @@ def intent_decision(subject: str) -> str | None:
 
 
 # --- rationale -> disposition prior (soft facets) ---
-def record_rationale(disposition_id: str, prior: str) -> None:
+def record_rationale(disposition_id: str, prior: str, product: str = "") -> None:
+    """A designer's wording for a principle — scoped to `product` ("<product>::<id>") so a
+    rewording for one product never leaks into another that generated the same id."""
     d = load()
-    d["rationales"][disposition_id] = prior
+    d["rationales"][f"{product}::{disposition_id}" if product else disposition_id] = prior
     save(d)
 
 
-def rationale(disposition_id: str) -> str | None:
-    return load()["rationales"].get(disposition_id)
+def rationale(disposition_id: str, product: str = "") -> str | None:
+    """Product-scoped wording first; a legacy unscoped entry still applies as fallback."""
+    r = load()["rationales"]
+    return (r.get(f"{product}::{disposition_id}") if product else None) or r.get(disposition_id)
 
 
 # --- promoted roles (vocab self-extension: a tear becomes a new primitive) ---

@@ -384,13 +384,13 @@ def generate_twin(repo: str, gcss: str, comps: str, *, framing: str = "default",
                          max_tokens=21000, use_cache=use_cache)
 
 
-def build_baseline(repo: str, gcss: str, comps: str) -> dict:
+def build_baseline(repo: str, gcss: str, comps: str, jobs: Jobs | None = None) -> dict:
     """The jobs + every framing's materialized twin — built ONCE per compile and shared by
     the subtractive channel and the component twin check. {"jobs", "twins": [(name,
     repo, gcss, comps)], "log"}; empty twins when no key (callers degrade)."""
     log, twins, jobs = [], [], None
     try:
-        jobs = extract_jobs(repo, gcss, comps)
+        jobs = jobs or extract_jobs(repo, gcss, comps)
         log.append(f"baseline jobs ({jobs.product_kind}): {jobs.jobs}")
         for name in TWIN_FRAMINGS:
             try:

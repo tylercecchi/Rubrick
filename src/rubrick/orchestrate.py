@@ -10,6 +10,8 @@ targeting: discovery finds what to observe, so it works on any repo.
 
 from __future__ import annotations
 
+import re
+
 import json
 import importlib
 import pathlib
@@ -42,18 +44,100 @@ class DispositionOut(BaseModel):
     prior: str
 
 
-def generate_disposition(kind: str, delta: list[str], *, use_cache: bool = True) -> Disposition:
-    key = f"{kind}:{','.join(sorted(delta))}"
+_MATERIAL_ROLES = {
+    "base": "the fill color", "sheen": "a directional gloss gradient",
+    "lighting": "radial highlights/shadows simulating light on the surface",
+    "texture": "a repeating micro-pattern", "bevel": "a lit edge", "shadow": "a drop shadow",
+}
+
+# words that attribute a BUSINESS motive to a design choice. A principle is the product's
+# intent as builders read it; one that invents a retention/engagement motive tells an agent
+# to build manipulation. Flagged for the designer unless the product's own jobs say so.
+_MOTIVE = re.compile(r"\b(retention|retain(?:ing)?|engagement|conversion|convert(?:ing)?|churn|upsell|"
+                     r"monetiz\w*|cost of (?:exit|leaving)|disengag\w*|lock[- ]in|stickiness|"
+                     r"keep (?:users|them) (?:from|in)|dark pattern|addict\w*|habit[- ]forming)\b", re.I)
+
+
+def motive_flag(prior: str, jobs: list[str] | None = None) -> str | None:
+    """A reason to check this principle, or None. Deterministic."""
+    m = _MOTIVE.search(prior or "")
+    if not m:
+        return None
+    if jobs and any(m.group(0).lower() in j.lower() for j in jobs):
+        return None  # the product's own jobs name this motive — it's the product's, not invented
+    return (f"attributes a business motive (“{m.group(0)}”) the product never states — "
+            f"builders follow principles as intent, so confirm or reword it")
+
+
+def _move_descriptions(kind: str, moves: list[str]) -> dict:
+    """What each captured move MEANS, in plain words — so the generator reads intent from
+    meaning, not from a bare (and sometimes loaded) vocabulary name."""
+    from rubrick.interaction import TREATMENT_DESCRIPTIONS
+    from rubrick.style_facets import FACETS
+    from rubrick.type_extract import TYPE_FEATURE_DESCRIPTIONS
+    table = dict(TREATMENT_DESCRIPTIONS) | dict(TYPE_FEATURE_DESCRIPTIONS) | _MATERIAL_ROLES
+    for f in FACETS.values():
+        table |= dict(f.get("vocab", {}))
+    for facet in ("typography", "color", "density", "ambient", "elevation"):
+        table |= learned.promoted_facets(facet)
+    table |= learned.promoted_treatments()
+    return {m: table.get(m, "") for m in moves}
+
+
+def similar_moves(a: set, b: set, threshold: float = 0.6) -> bool:
+    """Two move sets describe the same behavior (Jaccard >= threshold) — they share one
+    principle instead of getting near-duplicate ones."""
+    return bool(a or b) and len(a & b) / len(a | b) >= threshold
+
+
+_DISP_PROMPT = """You are stating the design PRINCIPLE behind one area of a product's identity.
+
+PRODUCT: {product}
+WHAT PEOPLE USE IT FOR:
+{jobs}
+WHERE THIS APPLIES: {where}
+THE CAPTURED MOVES, and what each one means:
+{moves}
+
+State the underlying disposition — the design intent that generates these moves — as a
+short kebab-case id and a one-line prior (the "why", feature-agnostic).
+- Write it from the experience the product creates for the person using it, in terms of
+  this product's purpose.
+- Do NOT attribute business motives (retention, engagement, conversion, making it costly
+  to leave) unless the product's own uses above state them.
+- Some move names describe mechanics that sound negative out of context — read each one
+  through its meaning above (e.g. a deliberate pause is ceremony, not obstruction)."""
+
+
+def generate_disposition(kind: str, delta: list[str], *, context: dict | None = None,
+                         product_key: str = "", use_cache: bool = True) -> Disposition:
+    """The 'why' behind a set of captured moves. With `context` (the product's kind and
+    jobs, and where the moves apply) the principle is product-specific and cached per
+    product; without it (no key / no jobs) it falls back to the bare move list. A
+    designer's rewording (learned.rationale, scoped to `product_key`) always wins."""
+    moves = sorted(delta)
+    if context:
+        ctx = {"product": context.get("product", ""), "jobs": list(context.get("jobs", [])),
+               "where": context.get("where", kind)}
+        desc = _move_descriptions(kind, moves)
+        prompt = _DISP_PROMPT.format(
+            product=ctx["product"] or "a web product",
+            jobs="\n".join(f"- {j}" for j in ctx["jobs"]) or "- (unknown)",
+            where=ctx["where"],
+            moves="\n".join(f"- {m}: {desc[m]}" if desc[m] else f"- {m}" for m in moves))
+        key = f"{kind}:{','.join(moves)}:{content_key(prompt)}"
+    else:
+        prompt = (f"A product's captured {kind} identity moves are {moves}. State the "
+                  f"underlying DISPOSITION — the design prior that generates them — as a short "
+                  f"kebab-case id and a one-line prior (the 'why', feature-agnostic).")
+        key = f"{kind}:{','.join(moves)}"
     cache = json.loads(_DISP_CACHE.read_text()) if _DISP_CACHE.exists() else {}
     if use_cache and key in cache:
         d = cache[key]
         disp = Disposition(d["id"], d["prior"])
     else:
-        prompt = (f"A product's captured {kind} identity moves are {sorted(delta)}. State the "
-                  f"underlying DISPOSITION — the design prior that generates them — as a short "
-                  f"kebab-case id and a one-line prior (the 'why', feature-agnostic).")
         resp = anthropic.Anthropic(api_key=_load_key()).messages.parse(
-            model="claude-opus-4-8", max_tokens=600, thinking={"type": "adaptive"},
+            model="claude-opus-4-8", max_tokens=1200, thinking={"type": "adaptive"},
             messages=[{"role": "user", "content": prompt}], output_format=DispositionOut)
         cache[key] = resp.parsed_output.model_dump()
         _DISP_CACHE.write_text(json.dumps(cache, indent=2))
@@ -263,7 +347,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
                     application = extract_color_application(asrc, content_key(asrc)).model_dump()["bindings"]
                 fprev = {mv: p for mv, p in prevalence_map.get(facet, {}).items() if mv in delta}
                 styles.append(StyleRecord(facet, delta,
-                                          add_disp(generate_disposition(facet, sorted(delta) or [facet])),
+                                          add_disp(why(facet, sorted(delta) or [facet], f"the product's {facet}")),
                                           concrete=concrete_fn(obs, src), metrics=mets,
                                           application=application, prevalence=fprev))
                 log.append(f"style/{facet}: CAPTURE {sorted(delta)}"
@@ -280,7 +364,8 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     if found:
         surface_comp_name, mat = pathlib.Path(found[0]).stem, found[1]
         roles = mat.material_roles()
-        disp = calibrate_surface(generate_disposition("material surface", sorted(roles)), mat)
+        disp = calibrate_surface(why("material surface", roles,
+                                     "the material of the product's focal object"), mat)
         from rubrick.extract_css import material_prevalence
         sprev = material_prevalence(repo, comps)  # how RESERVED the rich material is
         surfaces.append(SurfaceRecord("focal-entity", roles, add_disp(disp), prevalence=sprev))
@@ -335,8 +420,26 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             if len(delta) >= 2 and (im.moment not in by_moment or len(delta) > by_moment[im.moment][0]):
                 by_moment[im.moment] = (len(delta), stem, eb, im, delta, gathered)
 
-    # capture the top distinct identity interactions (most identity-bearing moments)
-    for _, stem, eb, im, delta, gathered in sorted(by_moment.values(), key=lambda x: -x[0])[:3]:
+    # capture the top distinct identity interactions (most identity-bearing moments).
+    # Interactions with mostly the same moves describe ONE behavior: they share one
+    # principle, generated once with every moment it covers (no near-duplicate "whys").
+    top = sorted(by_moment.values(), key=lambda x: -x[0])[:3]
+    groups: list[list] = []
+    for row in top:
+        g = next((g for g in groups if similar_moves(set(row[4]), set(g[0][4]))), None)
+        (g.append(row) if g else groups.append([row]))
+    from rubrick.moment_vocab import MOMENT_VOCAB
+    group_disp = {}
+    for g in groups:
+        moves = set().union(*(set(r[4]) for r in g))
+        where = "the " + ", ".join(f"'{r[3].moment}' ({MOMENT_VOCAB.get(r[3].moment, r[3].moment)})"
+                                   for r in g) + " interaction" + ("s" if len(g) > 1 else "")
+        d = why("interaction", moves, where)
+        for r in g:
+            group_disp[r[3].moment] = d
+        if len(g) > 1:
+            log.append(f"behavior: {[r[3].moment for r in g]} share one principle ({d.id})")
+    for _, stem, eb, im, delta, gathered in top:
         for nt in eb.novel_treatments:
             if nt.name not in learned.discarded("treatment"):
                 pending.append({"name": nt.name, "modality": "behavior:treatment",
@@ -344,7 +447,8 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         moment_items.append({"interaction": stem, "moment": im.moment,
                              "confidence": round(im.confidence, 2), "correct_to": ""})
         tim = detect_timings(gathered)  # deterministic choreography timing
-        disp = calibrate_rule(generate_disposition("interaction", sorted(delta)),
+        shared = group_disp[im.moment]
+        disp = calibrate_rule(Disposition(shared.id, shared.prior),
                               tim["exit_ms"], tim["enter_ms"], eb.disorientation)
         rules.append(RuleRecord(im.moment, delta, add_disp(disp),
                                 exit_ms=tim["exit_ms"], enter_ms=tim["enter_ms"]))
@@ -364,7 +468,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             log.append(f"composition: generic ({cobs.archetype}) — no distinctive spine, no record")
         else:
             delta = [cobs.archetype, cobs.composition] + ([cobs.focal_anchor] if cobs.focal_anchor else [])
-            cdisp = add_disp(generate_disposition("composition", delta))
+            cdisp = add_disp(why("composition", delta, "the product's overall layout"))
             composition = CompositionRecord(cobs.archetype, cobs.focal_anchor,
                                             cobs.composition, cdisp)
             log.append(f"composition: CAPTURE {cobs.archetype} · anchor={cobs.focal_anchor} "
@@ -384,7 +488,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         nrec0 = len(styles) + len(surfaces) + len(rules) + (1 if composition else 0) + min(len(sigs), 3)
         if nrec0 >= 2:
             from rubrick.absences import build_baseline, check_component_gestures
-            baseline = build_baseline(repo, gcss, comps)
+            baseline = build_baseline(repo, gcss, comps, jobs=jobs0)
             log += baseline["log"]
             gt = check_component_gestures(repo, sigs, baseline, comps, gcss)
             log += gt["log"]
@@ -486,6 +590,10 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             deduped.append(p)
     ps._pending = deduped  # type: ignore[attr-defined]
     ps._intent = intent_items  # type: ignore[attr-defined]
-    ps._jobs = baseline.get("jobs")  # type: ignore[attr-defined]
+    ps._jobs = baseline.get("jobs") or jobs0  # type: ignore[attr-defined]
+    ps._disp_flags = {d.id: f for d in dispositions.values()  # type: ignore[attr-defined]
+                      if (f := motive_flag(d.prior, jobs0.jobs if jobs0 else None))}
+    for i, f in ps._disp_flags.items():
+        log.append(f"principle CHECK {i}: {f}")
     ps._moments = moment_items  # type: ignore[attr-defined]
     return ps

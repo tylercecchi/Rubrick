@@ -62,6 +62,12 @@ OBSERVE ─▶ SALIENCE ─▶ ELICIT ─▶ LIFT ─▶ COMPILE ─▶ GENERATE
   behavior, intent splits into **deliberateness** (effort · specificity · coherence — "authored
   on purpose?") and **systematicity** (recurrence — "a system pattern or a one-off?").
 
+- **Principles are about *this* product.** A disposition is generated from the product's kind and
+  jobs, where the moves apply, and what each move *means* — never from bare move names, which once
+  turned a radar console's deliberate arm-then-commit ceremony into "raise the cost of leaving".
+  Business motives the product never states are flagged for the designer; interactions sharing most
+  moves share one principle; a designer's rewording is scoped to its product.
+
 - **Dispositions are operative, not decorative.** A disposition is the calibrated "why"
   (e.g. _"ceremony scales with how disorienting the reorientation is"_). It drives what
   `generate()` derives and what `check()` validates — quantitatively, not just by presence.
