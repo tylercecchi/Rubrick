@@ -50,3 +50,55 @@ def discover_components(repo: str, comps: str) -> list[str]:
                 seen.add(s)
                 out.append(s)
     return out
+
+
+# ── layout detection: find the stylesheet and components folder so nobody has to type them ──
+
+_CSS_NAMES = {"globals.css": 3, "global.css": 3, "index.css": 2, "app.css": 2, "main.css": 1,
+              "styles.css": 1, "style.css": 1, "tailwind.css": 2}
+_COMPONENT_DIRS = ("src/components", "components", "app/components", "src/app/components",
+                   "src/ui", "ui", "src/lib/components", "lib/components")
+
+
+def _walk(r: pathlib.Path, pattern: str):
+    for f in r.rglob(pattern):
+        rel = f.relative_to(r).parts
+        if _SKIP_DIRS.intersection(rel) or any(p.startswith(".") for p in rel[:-1]):
+            continue
+        if f.is_file():
+            yield f
+
+
+def detect_layout(repo: str) -> dict:
+    """Best guess at a product's global stylesheet and components folder, so a product can
+    be added by pointing at its folder alone. {globals_css, components_dir, found:{...}} —
+    paths relative to the repo; found says which ones were actually located (a guess that
+    wasn't found still works: every reader treats a missing path as 'nothing here')."""
+    r = pathlib.Path(repo)
+    best, best_score = None, 0.0
+    for f in _walk(r, "*.css"):
+        if f.name.endswith(".module.css"):
+            continue
+        try:
+            head = f.read_text(errors="ignore")[:20000]
+        except OSError:
+            continue
+        s = _CSS_NAMES.get(f.name, 0)
+        s += 4 if ("@tailwind" in head or 'tailwindcss"' in head or "tailwindcss'" in head
+                   or "@theme" in head) else 0
+        s += 2 if ":root" in head else 0
+        s += 1 if "font-family" in head or "--font" in head else 0
+        s -= 0.2 * len(f.relative_to(r).parts)
+        if s > best_score:
+            best, best_score = f, s
+    comps = next((c for c in _COMPONENT_DIRS if (r / c).is_dir()), None)
+    if comps is None:  # no conventional folder: the shallowest dir holding the most .tsx/.jsx
+        counts: dict[pathlib.Path, int] = {}
+        for f in list(_walk(r, "*.tsx")) + list(_walk(r, "*.jsx")):
+            counts[f.parent] = counts.get(f.parent, 0) + 1
+        if counts:
+            d = max(counts, key=lambda p: (counts[p], -len(p.parts)))
+            comps = str(d.relative_to(r)) or "."
+    return {"globals_css": str(best.relative_to(r)) if best else "src/app/globals.css",
+            "components_dir": comps or "src/components",
+            "found": {"globals_css": best is not None, "components_dir": comps is not None}}

@@ -20,7 +20,7 @@ _EMPTY = {"disambiguation_rules": [], "role_exemplars": {},
           "promoted_roles": {}, "promoted_treatments": {}, "promoted_moments": {},
           "promoted_facets": {}, "discarded": {}, "moment_corrections": {},
           "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {},
-          "promoted_absences": {}, "job_overrides": {}, "switches": {}}
+          "promoted_absences": {}, "job_overrides": {}, "switches": {}, "edited": {}}
 
 
 def load() -> dict:
@@ -72,12 +72,31 @@ def intent_decision(subject: str) -> str | None:
 # wording, description overrides, interaction-purpose corrections) are stored PER PRODUCT;
 # learned KNOWLEDGE (promoted vocabulary, detectors, effect locality) stays global. A
 # drifting ticker can be one product's identity and a mistake in another.
+def _now() -> str:
+    import datetime
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def touch(product: str, d: dict | None = None) -> None:
+    """Note that a product's own decisions changed (they apply on its next compile)."""
+    own = d is None
+    d = d if d is not None else load()
+    d.setdefault("edited", {})[product] = _now()
+    if own:
+        save(d)
+
+
+def edited_at(product: str) -> str | None:
+    return load().get("edited", {}).get(product)
+
+
 def record_switch(product: str, key: str, state: str) -> None:
     """state = 'on' (active) | 'off' (inactive), set by the designer. Recording the item's
     current state is how a designer CONFIRMS Rubrick's default ('keep inactive')."""
     assert state in ("on", "off"), state
     d = load()
-    d["switches"].setdefault(product, {})[key] = {"state": state, "by": "you"}
+    d["switches"].setdefault(product, {})[key] = {"state": state, "by": "you", "at": _now()}
+    touch(product, d)
     save(d)
 
 
@@ -98,7 +117,21 @@ def record_rationale(disposition_id: str, prior: str, product: str = "") -> None
     rewording for one product never leaks into another that generated the same id."""
     d = load()
     d["rationales"][f"{product}::{disposition_id}" if product else disposition_id] = prior
+    if product:
+        touch(product, d)
     save(d)
+
+
+def record_title(disposition_id: str, title: str, product: str) -> None:
+    """A designer's title for a principle, per product."""
+    d = load()
+    d["rationales"][f"{product}::{disposition_id}::title"] = title
+    touch(product, d)
+    save(d)
+
+
+def title(disposition_id: str, product: str) -> str | None:
+    return load()["rationales"].get(f"{product}::{disposition_id}::title")
 
 
 def rationale(disposition_id: str, product: str = "") -> str | None:

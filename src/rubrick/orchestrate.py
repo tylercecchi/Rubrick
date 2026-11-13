@@ -42,6 +42,7 @@ class DispositionOut(BaseModel):
     model_config = {"extra": "forbid"}
     id: str
     prior: str
+    title: str = ""
 
 
 _MATERIAL_ROLES = {
@@ -100,7 +101,8 @@ THE CAPTURED MOVES, and what each one means:
 {moves}
 
 State the underlying disposition — the design intent that generates these moves — as a
-short kebab-case id and a one-line prior (the "why", feature-agnostic).
+short kebab-case id, a one-line prior (the "why", feature-agnostic), and a short plain title
+of 2–6 words a designer would recognize (e.g. "Type that commands attention").
 - Write it from the experience the product creates for the person using it, in terms of
   this product's purpose.
 - Do NOT attribute business motives (retention, engagement, conversion, making it costly
@@ -129,22 +131,27 @@ def generate_disposition(kind: str, delta: list[str], *, context: dict | None = 
     else:
         prompt = (f"A product's captured {kind} identity moves are {moves}. State the "
                   f"underlying DISPOSITION — the design prior that generates them — as a short "
-                  f"kebab-case id and a one-line prior (the 'why', feature-agnostic).")
+                  f"kebab-case id, a one-line prior (the 'why', feature-agnostic), and a short "
+                  f"plain title of 2-6 words.")
         key = f"{kind}:{','.join(moves)}"
     cache = json.loads(_DISP_CACHE.read_text()) if _DISP_CACHE.exists() else {}
     if use_cache and key in cache:
         d = cache[key]
-        disp = Disposition(d["id"], d["prior"])
+        disp = Disposition(d["id"], d["prior"], title=d.get("title", ""))
     else:
         resp = anthropic.Anthropic(api_key=_load_key()).messages.parse(
             model="claude-opus-4-8", max_tokens=1200, thinking={"type": "adaptive"},
             messages=[{"role": "user", "content": prompt}], output_format=DispositionOut)
         cache[key] = resp.parsed_output.model_dump()
         _DISP_CACHE.write_text(json.dumps(cache, indent=2))
-        disp = Disposition(resp.parsed_output.id, resp.parsed_output.prior)
+        disp = Disposition(resp.parsed_output.id, resp.parsed_output.prior,
+                           title=resp.parsed_output.title)
     r = learned.rationale(disp.id, product=product_key)  # the designer's wording wins
     if r:
         disp.prior = r
+    t = learned.title(disp.id, product_key) if product_key else None
+    if t:
+        disp.title = t
     return disp
 
 
@@ -474,7 +481,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
                              "confidence": round(im.confidence, 2), "correct_to": ""})
         tim = detect_timings(gathered)  # deterministic choreography timing
         shared = group_disp[im.moment]
-        disp = calibrate_rule(Disposition(shared.id, shared.prior),
+        disp = calibrate_rule(Disposition(shared.id, shared.prior, title=shared.title),
                               tim["exit_ms"], tim["enter_ms"], eb.disorientation)
         rules.append(RuleRecord(im.moment, delta, add_disp(disp),
                                 exit_ms=tim["exit_ms"], enter_ms=tim["enter_ms"]))
@@ -615,16 +622,43 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         catalog.append(_cat("composition", "add", "on", product_key, label=composition.archetype))
         if sw("composition") == "off":
             composition = None
+    # MEMBERSHIP: each catalog item names the principle it belongs to. Moves follow their
+    # facet's principle; the lit object, interactions and layout follow their own; parts
+    # follow the layout (else the interaction) principle; new finds follow their facet, or
+    # the interaction principle for patterns/treatments. Omissions have no principle.
+    by_facet = {st.facet: st.disposition.id for st in styles}
+    first_rule = rules[0].disposition.id if rules else None
+    comp_id = composition.disposition.id if composition is not None else None
+    def member(key: str) -> str | None:
+        head, _, rest = key.partition(":")
+        if head in by_facet:
+            return by_facet[head]
+        if head == "surface":
+            return next((sr.disposition.id for sr in surfaces if sr.applies_to == rest), None)
+        if head == "rule":
+            return next((r.disposition.id for r in rules if r.applies_to == rest), None)
+        if key == "composition":
+            return comp_id
+        if head == "component":
+            return comp_id or first_rule
+        if head == "new":
+            mod = rest.split(":", 1)[0]
+            return by_facet.get(mod) or (first_rule if mod in ("pattern", "behavior") else None)
+        return None
+    for c in catalog:
+        c["principle"] = member(c["key"])
     # a principle no active record cites is not shown to builders
     cited = {x.disposition.id for x in [*styles, *surfaces, *rules]} | (
         {composition.disposition.id} if composition else set())
+    principles = [{"id": d.id, "title": d.title, "prior": d.prior, "active": d.id in cited}
+                  for d in dispositions.values()]
     dispositions = {k: v for k, v in dispositions.items() if k in cited}
 
     ps = ProductSystem(dispositions=dispositions, surfaces=surfaces, rules=rules,
                        styles=styles, composition=composition, components=components,
                        subtractions=subtractions, observed_patterns=observed_patterns,
                        capabilities=capabilities, observed_absences=observed_absences,
-                       catalog=catalog)
+                       catalog=catalog, principles=principles)
     ps._log = log  # type: ignore[attr-defined]
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []
@@ -637,12 +671,20 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         # product stays in the catalog but leaves the review (per product, not global)
         c = _cat(f"new:{p['modality']}:{p['name']}", "omit" if p["modality"] == "absence" else "add",
                  "off", product_key, label=p["name"], new=True)
+        # the find describes itself in the system, not only in the review file
+        for f in ("evidence", "instead", "against", "host", "confidence", "component"):
+            if p.get(f):
+                c[f] = p[f]
+        c["principle"] = member(c["key"])
         ps.catalog.append(c)
         if not (c["set_by"] == "you" and c["state"] == "off"):
             deduped.append(p)
     ps._pending = deduped  # type: ignore[attr-defined]
     ps._intent = intent_items  # type: ignore[attr-defined]
     ps._jobs = baseline.get("jobs") or jobs0  # type: ignore[attr-defined]
+    if ps._jobs:
+        ps.about = {"kind": ps._jobs.product_kind,
+                    "jobs": [{"original": o, "need": n} for o, n in zip(ps._jobs.raw_jobs, ps._jobs.needs)]}
     ps._disp_flags = {d.id: f for d in dispositions.values()  # type: ignore[attr-defined]
                       if (f := motive_flag(d.prior, jobs0.jobs if jobs0 else None))}
     for i, f in ps._disp_flags.items():

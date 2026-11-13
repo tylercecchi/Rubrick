@@ -1,12 +1,14 @@
 {
   "dispositions": {
-    "status-legibility-through-color": {
-      "prior": "Saturated accent color makes an item's status instantly recognizable at a glance, so people grasp state before reading.",
-      "calibrated": {}
+    "color-as-signal": {
+      "prior": "When color carries bold, saturated accent, status becomes instantly legible and the item's identity reads at a glance.",
+      "calibrated": {},
+      "title": "Color that signals status"
     },
     "information-dense": {
-      "prior": "When people come to see a title and status at a glance, packing information tightly lets them take in everything they need in a single look without hunting across the layout.",
-      "calibrated": {}
+      "prior": "Packing details tightly lets people take in an item's title and status at a glance without hunting across space.",
+      "calibrated": {},
+      "title": "Dense at-a-glance status"
     }
   },
   "surfaces": [],
@@ -17,7 +19,7 @@
       "identity_moves": [
         "expressive-accent"
       ],
-      "because": "status-legibility-through-color",
+      "because": "color-as-signal",
       "concrete": {
         "anchors": [
           "#5e6ad2",
@@ -150,7 +152,8 @@
       "state": "on",
       "set_by": "rubrick",
       "label": "expressive-accent",
-      "area": "color"
+      "area": "color",
+      "principle": "color-as-signal"
     },
     {
       "key": "density:information-dense",
@@ -159,7 +162,8 @@
       "state": "on",
       "set_by": "rubrick",
       "label": "information-dense",
-      "area": "density"
+      "area": "density",
+      "principle": "information-dense"
     },
     {
       "key": "absence:ambient-motion",
@@ -168,7 +172,8 @@
       "state": "on",
       "set_by": "rubrick",
       "label": "ambient-motion",
-      "why": "2/3 generic twins have it"
+      "why": "2/3 generic twins have it",
+      "principle": null
     },
     {
       "key": "absence:elevation-shadow",
@@ -177,7 +182,8 @@
       "state": "on",
       "set_by": "rubrick",
       "label": "elevation-shadow",
-      "why": "3/3 generic twins have it"
+      "why": "3/3 generic twins have it",
+      "principle": null
     },
     {
       "key": "absence:single-hue",
@@ -186,7 +192,8 @@
       "state": "on",
       "set_by": "rubrick",
       "label": "single-hue",
-      "why": "3/3 generic twins have it"
+      "why": "3/3 generic twins have it",
+      "principle": null
     },
     {
       "key": "absence:flat-color",
@@ -195,7 +202,8 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "flat-color",
-      "why": "1/3 generic twins have it"
+      "why": "1/3 generic twins have it",
+      "principle": null
     },
     {
       "key": "absence:single-face",
@@ -204,7 +212,8 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "single-face",
-      "why": "0/3 generic twins have it"
+      "why": "0/3 generic twins have it",
+      "principle": null
     },
     {
       "key": "new:color:dark-first-neutral-scale",
@@ -213,7 +222,9 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "dark-first-neutral-scale",
-      "new": true
+      "new": true,
+      "evidence": "gray ramp anchored at near-black --gray-0 #08090a as page background with light text --gray-7/--gray-8, a deliberately dark-mode-native chrome",
+      "principle": "color-as-signal"
     },
     {
       "key": "new:absence:status-badge",
@@ -222,7 +233,12 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "status-badge",
-      "new": true
+      "new": true,
+      "evidence": "No sp-badge / badge / pill class or bordered rounded container exists anywhere in the product; status is rendered as a bare styled span.",
+      "instead": "Inline colored text label (\"Active\" in the accent hue) states the status directly.",
+      "host": "Panel.tsx status value span <span style={{ fontSize: 13, color: \"#5e6ad2\" }}>Active</span>",
+      "confidence": "high",
+      "principle": null
     },
     {
       "key": "new:absence:status-dot",
@@ -231,7 +247,12 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "status-dot",
-      "new": true
+      "new": true,
+      "evidence": "No dot element, bullet, or border-radius:50% circle appears anywhere in the product's CSS or inline styles.",
+      "instead": "The accent-colored status text itself carries the state signal.",
+      "host": "Panel.tsx status value span <span style={{ fontSize: 13, color: \"#5e6ad2\" }}>Active</span>",
+      "confidence": "high",
+      "principle": null
     },
     {
       "key": "new:absence:row-divider",
@@ -240,12 +261,45 @@
       "state": "off",
       "set_by": "rubrick",
       "label": "row-divider",
-      "new": true
+      "new": true,
+      "evidence": "No border-top, border-bottom, or hairline between the stacked rows anywhere; only spacing values are set.",
+      "instead": "Whitespace (gap:12, marginTop:4) separates the rows.",
+      "against": ".row class is defined in globals.css with padding/gap but never applied \u2014 Panel uses inline styles instead.",
+      "host": "The stacked rows inside Panel.tsx (status row and the 'Restraint is the identity.' row)",
+      "confidence": "medium",
+      "principle": null
     }
   ],
+  "principles": [
+    {
+      "id": "color-as-signal",
+      "title": "Color that signals status",
+      "prior": "When color carries bold, saturated accent, status becomes instantly legible and the item's identity reads at a glance.",
+      "active": true
+    },
+    {
+      "id": "information-dense",
+      "title": "Dense at-a-glance status",
+      "prior": "Packing details tightly lets people take in an item's title and status at a glance without hunting across space.",
+      "active": true
+    }
+  ],
+  "about": {
+    "kind": "A status display panel component",
+    "jobs": [
+      {
+        "original": "see an item's title",
+        "need": "see an item's title"
+      },
+      {
+        "original": "know an item's status",
+        "need": "know an item's status"
+      }
+    ]
+  },
   "_checklist": [
-    "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: Saturated accent color makes an item's status instantly recognizable at a glance.",
-    "DENSITY \u2014 carry the moves ['information-dense'].  WHY: When people come to see a title and status at a glance, packing information tightly lets them take in everything they need in a single look without hunting across the layout.",
+    "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: When color carries bold, saturated accent, status becomes instantly legible and the item's identity reads at a glance.",
+    "DENSITY \u2014 carry the moves ['information-dense'].  WHY: Packing details tightly lets people take in an item's title and status at a glance without hunting across space.",
     "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation). Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."

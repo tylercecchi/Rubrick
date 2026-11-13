@@ -424,6 +424,25 @@ def _measure_docs() -> dict:
     return MEASURE_DESCRIPTIONS
 
 
+def revoke_detector(key: str) -> bool:
+    """Revoke a learned detector ('kind:name') — it stops gating everywhere immediately
+    (only status='active' ever gates). For an absence:<builtin> key with no learned entry,
+    records a revocation that removes the built-in from the registry. Returns True if a
+    change was made."""
+    d = learned.load()
+    dets = d.setdefault("learned_detectors", {})
+    ent = dets.get(key)
+    if ent is None:
+        from rubrick.subtractions import BUILTINS
+        if not (key.startswith("absence:") and key.split(":", 1)[1] in BUILTINS):
+            return False
+        ent = dets[key] = {"spec": None, "calibrated_on": ""}
+    ent["status"] = "revoked"
+    learned.save(d)
+    _memo["mtime"] = "stale"
+    return True
+
+
 def record_detector(kind: str, name: str, spec: dict | None, status: str,
                     calibrated_on: str, reason: str = "") -> None:
     """Persist a proposal's outcome in learned.json. Only status='active' ever gates."""

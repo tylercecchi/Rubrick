@@ -9,5 +9,32 @@
   "promoted_moments": {},
   "promoted_facets": {},
   "discarded": {},
-  "moment_corrections": {}
+  "moment_corrections": {},
+  "locality_overrides": {},
+  "promoted_patterns": {},
+  "learned_detectors": {},
+  "promoted_absences": {},
+  "job_overrides": {},
+  "switches": {
+    "Beacon": {
+      "new:behavior:treatment:ambient-radar-loop": {
+        "state": "on",
+        "by": "you",
+        "at": "2026-11-13T21:03:11+00:00"
+      },
+      "new:behavior:treatment:perpetual-marquee": {
+        "state": "on",
+        "by": "you",
+        "at": "2026-11-13T21:03:16+00:00"
+      },
+      "new:pattern:timed-arm-commit": {
+        "state": "on",
+        "by": "you",
+        "at": "2026-11-13T21:03:19+00:00"
+      }
+    }
+  },
+  "edited": {
+    "Beacon": "2026-11-13T21:03:19+00:00"
+  }
 }
