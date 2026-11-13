@@ -321,9 +321,9 @@ def _admit_measure(spec: dict, calibration_repo: tuple | None,
                 f"({spec['zeroed']}) — the product does not omit this by that measure")
     ev = read(spec, _exemplar_repo(exemplars, calibration_repo[1], calibration_repo[2]),
               calibration_repo[1], calibration_repo[2])
-    if zeroed(spec, ev):
-        return (f"the generic exemplars read {ev!r}, which is still 'zeroed' — the measure "
-                f"does not see the thing in a generic build")
+    if not added(spec, ev):  # must POSITIVELY read as having it — "unknown" is not "has it"
+        return (f"the generic exemplars read {ev!r}, which does not meet 'added' "
+                f"({spec['added']}) — the measure does not see the thing in a generic build")
     return None
 
 

@@ -257,7 +257,7 @@ def _measure_absence_ok() -> bool:
     legacy = [{"omits": "flat-color", "note": "FLAT-COLOR — solid fills only, no gradients"}]
     grad = _twin({"src/app/globals.css": ".hero { background: linear-gradient(#f00, #00f) }"})
     return (admit_absence(good, "", ex, [], cal) is None
-            and "still 'zeroed'" in (admit_absence(one_face, "", ex, [], cal) or "")
+            and "does not meet 'added'" in (admit_absence(one_face, "", ex, [], cal) or "")
             and "unknown measure" in (admit_absence(bad_measure, "", ex, [], cal) or "")
             and "calibration repo" in (admit_absence(good, "", ex, [], None) or "")
             and bool(check_subtractions(legacy, *grad))
@@ -338,6 +338,48 @@ def _baseline_logic_ok() -> bool:
     sticky = (same and one["jobs"] == ["move a task", "archive a task"]
               and split["jobs"] == prev["jobs"])  # a removal needs every chunk to agree
     return vote and gesture and jobs == ["add a task", "audit changes"] and hosts and sticky
+
+
+def _measure_spellings_ok() -> bool:
+    """Every omission measure reads the SAME styling the same way however it's written —
+    literal CSS, design tokens (var(--x)), inline React styles, Tailwind utilities — and a
+    plain build reads as having none of it. (A literal-only reader made a token-based
+    product read as "no rounding": a false refusal at capture, a missed add-back at check.)"""
+    from rubrick.subtractions import BUILTINS, MEASURES, added, zeroed
+    forms = {
+        "literal": _twin({"src/app/globals.css": ".a{border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);"
+                          "background:linear-gradient(#3b82f6,#22c55e);font-family:'Inter';font-weight:600;"
+                          "animation:p 2s infinite}\n.b{font-family:'Fraunces';font-weight:700;color:#3b82f6}",
+                          "src/components/A.tsx": "export const A = () => <div className='a' />"}),
+        "tokens": _twin({"src/app/globals.css": ":root{--r:12px;--sh:0 8px 24px rgba(0,0,0,.2);"
+                         "--g:linear-gradient(#3b82f6,#22c55e);--f1:'Inter';--f2:'Fraunces';--w1:600;--w2:700;"
+                         "--blue:#3b82f6}\n.a{border-radius:var(--r);box-shadow:var(--sh);background:var(--g);"
+                         "font-family:var(--f1);font-weight:var(--w1);animation:p 2s infinite}\n"
+                         ".b{font-family:var(--f2);font-weight:var(--w2);color:var(--blue)}",
+                         "src/components/A.tsx": "export const A = () => <div className='a' />"}),
+        "inline": _twin({"src/components/A.tsx": 'export const A = () => <div style={{ borderRadius: 12, '
+                         'boxShadow: "0 8px 24px rgba(0,0,0,.2)", background: "linear-gradient(#3b82f6, #22c55e)", '
+                         'fontFamily: "Inter", fontWeight: 600, animation: "p 2s infinite" }}><h1 style={{ '
+                         'fontFamily: "Fraunces", fontWeight: 700, color: "#3b82f6" }} /></div>'}),
+        "tailwind": _twin({"src/components/A.tsx": 'import { Inter, Fraunces } from "next/font/google";\n'
+                           'export const A = () => <div className="rounded-xl shadow-lg bg-gradient-to-r '
+                           'from-blue-500 to-green-500 font-semibold animate-pulse"><h1 className="font-bold '
+                           'text-blue-600" /></div>'}),
+    }
+    plain = _twin({"src/app/globals.css": ".a{padding:8px;color:#333}",
+                   "src/components/A.tsx": "export const A = () => <div className='a'>hi</div>"})
+    for name, ent in BUILTINS.items():
+        det = ent["detector"]
+        if name in ("single-hue", "single-face"):
+            continue  # "exactly one" omissions: covered by the counts below
+        if not all(added(det, MEASURES[det["measure"]](*f)) for f in forms.values()):
+            return False
+        if not zeroed(det, MEASURES[det["measure"]](*plain)):
+            return False
+    counts = {k: (MEASURES["hue_families"](*f), MEASURES["font_families"](*f), MEASURES["font_weights"](*f))
+              for k, f in forms.items()}
+    return (len(set(counts.values())) == 1 and counts["literal"] == (2, 2, 2)
+            and MEASURES["font_families"](*plain) is None)
 
 
 def run() -> bool:
@@ -429,6 +471,8 @@ def run() -> bool:
           _survey_triage_ok())
     check("twin baseline: majority vote, purpose-level gesture check, job overrides",
           _baseline_logic_ok())
+    check("omission measures read literal / token / inline / Tailwind styling identically",
+          _measure_spellings_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

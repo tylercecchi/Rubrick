@@ -127,6 +127,18 @@ verbs on domain objects with every mechanism stripped by prompt, and the product
   captured unless the designer marks `capture` (a refusal and a never-needed look identical in code);
 - no twin (no API key) → captured, marked `baseline: unavailable`.
 
+**One measurement source, every spelling.** Measures read `subtractions.measure_source`: every
+style-bearing file under the source dirs (`.ts` theme constants too, not only `.tsx`) plus a
+Tailwind config, with custom properties and numeric constants resolved (`resolve.resolve_values`)
+and Tailwind utilities translated into the equivalent CSS (`tailwind_as_css`: radius, shadow,
+gradients, weights, named faces, hue families, `animate-*`). A literal-only reader made a
+token-based product read as "no rounding" — a false refusal at capture and a missed add-back at
+check (a flat system couldn't see `shadow-lg`). The eval requires literal / token / inline /
+Tailwind spellings of the same styling to measure identically. The typeface count returns
+*unknown* (None) when no face is named, never a silent "one face"; a measure detector's generic
+exemplars must positively read as `added`, since unknown is not "has it". The flat-system
+add-back threshold is 12px blur (standard drop shadows such as Tailwind `shadow-lg`, 15px, count).
+
 Records embed their detector, so `check_subtractions` is self-contained and LLM-free; manifests
 from before the unification (built-ins stored by name) resolve through `BUILTINS`. The open
 channel (`absences.py`) finds what the registry doesn't know yet:
