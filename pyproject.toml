@@ -21,9 +21,10 @@ dependencies = [
   # the API key entered in the app is kept in the OS keychain (macOS Keychain, Windows
   # Credential Locker, Secret Service), never on a command line
   "keyring>=25",
-  # Intel Macs: cryptography 46+ ships no prebuilt wheel there and fails to build from source
-  # (it arrives via mcp -> pyjwt[crypto]); pin to the last release that has one.
-  "cryptography<46; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+  # Intel Macs: cryptography 49+ ships prebuilt wheels for Apple Silicon only, and building
+  # it from source needs Rust + OpenSSL headers (it arrives via mcp -> pyjwt[crypto]).
+  # 48.0.1 is the last release with an Intel build (universal2, macOS 10.9+).
+  "cryptography<49; sys_platform == 'darwin' and platform_machine == 'x86_64'",
 ]
 
 [project.optional-dependencies]
