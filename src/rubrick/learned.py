@@ -20,7 +20,8 @@ _EMPTY = {"disambiguation_rules": [], "role_exemplars": {},
           "promoted_roles": {}, "promoted_treatments": {}, "promoted_moments": {},
           "promoted_facets": {}, "discarded": {}, "moment_corrections": {},
           "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {},
-          "promoted_absences": {}, "job_overrides": {}, "switches": {}, "edited": {}}
+          "promoted_absences": {}, "job_overrides": {}, "switches": {}, "edited": {},
+          "declared_omissions": {}}
 
 
 def load() -> dict:
@@ -185,6 +186,20 @@ def promoted_patterns() -> dict:
 
 
 # --- promoted absences (the open subtractive channel: a deliberate omission -> vocab) ---
+def record_declared_omission(product: str, name: str, label: str, description: str) -> None:
+    """An omission the designer states for THIS product ("we never use toasts"). It enters the
+    product's system whatever the generic twins do, and stays on until switched off."""
+    d = load()
+    d.setdefault("declared_omissions", {}).setdefault(product, {})[name] = {
+        "label": label, "description": description, "at": _now()}
+    save(d)
+    record_switch(product, f"absence:{name}", "on")
+
+
+def declared_omissions(product: str) -> dict:
+    return load().get("declared_omissions", {}).get(product, {})
+
+
 def record_promoted_absence(name: str, description: str) -> None:
     d = load()
     d["promoted_absences"][name] = description

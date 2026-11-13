@@ -12,8 +12,22 @@
   "moment_corrections": {},
   "locality_overrides": {},
   "promoted_patterns": {},
-  "learned_detectors": {},
-  "promoted_absences": {},
+  "learned_detectors": {
+    "absence:toast-notifications": {
+      "spec": {
+        "all": [
+          "\\bToaster\\b|\\btoast\\.(success|error|info|warning|warn|loading|custom|promise|message|dismiss)\\s*\\(|\\bSnackbar\\b|anchorOrigin|position=[\"'](top|bottom)-(left|right)[\"']|\\bfixed\\b.{0,40}\\b(top|bottom)-\\d.{0,40}\\b(left|right)-\\d"
+        ],
+        "none": [],
+        "flags": ""
+      },
+      "status": "active",
+      "calibrated_on": "/Users/tylercecchi/Documents/GitHub/Rubrick/tests/fixtures/rubrick-restrained"
+    }
+  },
+  "promoted_absences": {
+    "toast-notifications": "Status changes show inline, on the thing that changed \u2014 never as a popup notification in a corner."
+  },
   "job_overrides": {},
   "switches": {
     "Beacon": {
@@ -32,9 +46,31 @@
         "by": "you",
         "at": "2026-11-13T21:03:19+00:00"
       }
+    },
+    "Restrained": {
+      "absence:toast-notifications": {
+        "state": "on",
+        "by": "you",
+        "at": "2026-11-13T21:26:53+00:00"
+      },
+      "new:absence:toast-notifications": {
+        "state": "on",
+        "by": "you",
+        "at": "2026-11-13T21:27:24+00:00"
+      }
     }
   },
   "edited": {
-    "Beacon": "2026-11-13T21:03:19+00:00"
+    "Beacon": "2026-11-13T21:03:19+00:00",
+    "Restrained": "2026-11-13T21:27:24+00:00"
+  },
+  "declared_omissions": {
+    "Restrained": {
+      "toast-notifications": {
+        "label": "Toast notifications",
+        "description": "Status changes show inline, on the thing that changed \u2014 never as a popup notification in a corner.",
+        "at": "2026-11-13T21:26:53+00:00"
+      }
+    }
   }
 }

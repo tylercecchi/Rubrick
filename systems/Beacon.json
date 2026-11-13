@@ -736,6 +736,7 @@
       "set_by": "rubrick",
       "label": "tabular-mono-numerals",
       "new": true,
+      "what": "Numbers line up in fixed-width columns so live readings stay steady and don't jitter as values change.",
       "evidence": "BeaconMono labels use font-variant-numeric: tabular-nums for aligned numeric data",
       "principle": "typographic-hierarchy-as-signal"
     },
@@ -747,6 +748,7 @@
       "set_by": "rubrick",
       "label": "lit-focal-object-color-separation",
       "new": true,
+      "what": "The main object stays a neutral dark tone, so color is saved only for signals and markers.",
       "evidence": "material comment 'the lit focal object' with top-lit gradient (#1b2233\u2192#0d1119), bevel highlights and neutral dramatic float shadow \u2014 deliberately keeps the focal object neutral so hue is reserved for signal/entity marking",
       "principle": "color-as-information"
     },
@@ -754,10 +756,11 @@
       "key": "new:behavior:treatment:ambient-radar-loop",
       "section": "add",
       "default": "off",
-      "state": "off",
-      "set_by": "rubrick",
+      "state": "on",
+      "set_by": "you",
       "label": "ambient-radar-loop",
       "new": true,
+      "what": "A radar-like beam sweeps continuously around the display in a slow, endless rotation.",
       "evidence": "@keyframes beacon-sweep { from rotate(0deg) to rotate(360deg) } applied to the .sweep conic-gradient field as a perpetual anchor animation",
       "principle": "transitions-as-narrated-events"
     },
@@ -765,10 +768,11 @@
       "key": "new:behavior:treatment:perpetual-marquee",
       "section": "add",
       "default": "off",
-      "state": "off",
-      "set_by": "rubrick",
+      "state": "on",
+      "set_by": "you",
       "label": "perpetual-marquee",
       "new": true,
+      "what": "A ticker strip drifts sideways nonstop, always moving regardless of whether anything has actually changed.",
       "evidence": "@keyframes signal-drift translateX(0) to translateX(-50%) on the .ticker \u2014 a continuously drifting base ticker with no state change",
       "principle": "transitions-as-narrated-events"
     },
@@ -832,10 +836,11 @@
       "key": "new:pattern:timed-arm-commit",
       "section": "add",
       "default": "off",
-      "state": "off",
-      "set_by": "rubrick",
+      "state": "on",
+      "set_by": "you",
       "label": "timed-arm-commit",
       "new": true,
+      "what": "A single click arms, then self-advances through stages before opening, instead of toggling instantly.",
       "evidence": "activate() pushes a sequence of timers: setPhase('committed') at ARM, then setOpen(true)/setPhase('idle') at ARM+BEAT \u2014 a single click drives a self-progressing phase machine ('idle'\u2192'committed'\u2192open) rather than an instant toggle, with onClick={open ? dismiss : activate} switching behavior once armed.",
       "component": "BeaconCard.tsx",
       "principle": "transitions-as-narrated-events"
@@ -848,6 +853,7 @@
       "set_by": "rubrick",
       "label": "pointer-scrub-track",
       "new": true,
+      "what": "Dragging along a track continuously sets a value as you move, scrubbing smoothly with your finger or cursor.",
       "evidence": "onPointerDown captures the pointer (setPointerCapture) and sets held; onPointerMove={(e)=>held && scrubTo(e.clientX)} maps continuous pointer X position along a track ref to scrubT; onPointerUp releases \u2014 dragging along an axis continuously sets a scalar value.",
       "component": "page.tsx",
       "principle": "transitions-as-narrated-events"
@@ -860,6 +866,7 @@
       "set_by": "rubrick",
       "label": "top-lit-directional-bevel",
       "new": true,
+      "what": "Surfaces look lit from above, with a bright top edge and a cool shadow below.",
       "evidence": "Explicit comment '/* lighting: lit from the top, falling into cool shadow */' with box-shadow combining 'inset 0 2px 0 rgba(255,255,255,0.10) /* bevel: top edge catches light */' and 'inset 0 -1px 0 rgba(0,0,0,0.55)' \u2014 a directional two-edge inset bevel simulating a consistent overhead light source, distinct from a plain recessed inset.",
       "principle": "depth-conveys-signal-priority"
     }
