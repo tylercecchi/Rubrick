@@ -1,7 +1,7 @@
 {
   "dispositions": {
     "color-as-meaning": {
-      "prior": "Color should encode meaning and status so users interpret state and sentiment instantly, not just decorate the interface.",
+      "prior": "people should grasp a card's state at a glance, so color is reserved to communicate status rather than decorate",
       "calibrated": {}
     }
   },
@@ -94,8 +94,46 @@
   "observed_patterns": [],
   "capabilities": [],
   "observed_absences": [],
+  "catalog": [
+    {
+      "key": "typography:expressive-weight",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "expressive-weight",
+      "area": "typography"
+    },
+    {
+      "key": "color:semantic-status-color",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "semantic-status-color",
+      "area": "color"
+    },
+    {
+      "key": "color:sentiment-coding",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "sentiment-coding",
+      "area": "color"
+    },
+    {
+      "key": "density:information-dense",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "information-dense",
+      "area": "density"
+    }
+  ],
   "_checklist": [
-    "COLOR \u2014 carry the moves ['semantic-status-color', 'sentiment-coding'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is LIGHT (tonality 0.98) \u2014 match that polarity.  WHY: Color should encode meaning and status so users interpret state and sentiment instantly, not just decorate the interface."
+    "COLOR \u2014 carry the moves ['semantic-status-color', 'sentiment-coding'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is LIGHT (tonality 0.98) \u2014 match that polarity.  WHY: people should grasp a card's state at a glance."
   ],
   "_guide": {
     "deployment_frequency": "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the source deploys its strongest moves \u2014 textures, glows, loops, display type \u2014 at a specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and that restraint is itself part of the identity. Applying a reserved move to every element destroys the figure/ground contrast that makes it read as identity; the build goes noisy and one-dimensional, and the gate flags clear over-application. Match the deployment pattern, not just the move.",

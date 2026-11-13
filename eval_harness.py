@@ -411,6 +411,43 @@ def _principles_ok() -> bool:
     return bool(flags) and group and scoped
 
 
+def _switches_ok() -> bool:
+    """Per-product switches, end to end on a real compile: a captured move switched OFF
+    leaves the records (so checks stop requiring it), an uncertain omission switched ON
+    joins them, a captured one switched OFF leaves; the catalog keeps every item with its
+    state and who set it; another product is unaffected; the product still self-conforms.
+    Temp learned store; the real one is untouched."""
+    import pathlib as _pl
+    import tempfile
+    from rubrick import detectors, learned
+    rrepo, rg = PRODUCTS["Restrained"]
+    orig = learned._F
+    learned._F = _pl.Path(tempfile.mkdtemp()) / "learned.json"
+    detectors._memo["mtime"] = "stale"
+    try:
+        learned.record_switch("Restrained", "density:information-dense", "off")
+        learned.record_switch("Restrained", "absence:flat-color", "on")
+        learned.record_switch("Restrained", "absence:elevation-shadow", "off")
+        ps = compile_product_system(rrepo, rg, _COMPS, [], "Restrained")
+        other = compile_product_system(rrepo, rg, _COMPS, [], "SomeOtherProduct")
+        moves = lambda x, f: next((st.required_features for st in x.styles if st.facet == f), set())
+        omits = lambda x: {o["omits"] for o in x.subtractions}
+        cat = {c["key"]: c for c in ps.catalog}
+        applied = ("information-dense" not in moves(ps, "density")
+                   and "flat-color" in omits(ps) and "elevation-shadow" not in omits(ps))
+        recorded = (cat["density:information-dense"]["state"] == "off"
+                    and cat["density:information-dense"]["set_by"] == "you"
+                    and cat["absence:flat-color"]["state"] == "on"
+                    and cat["absence:single-hue"]["set_by"] == "rubrick")
+        isolated = ("information-dense" in moves(other, "density")
+                    and "elevation-shadow" in omits(other) and "flat-color" not in omits(other))
+        r = check_conformance(rrepo, rg, _COMPS, "eval:switches", ps, native=False)["_summary"]
+        return applied and recorded and isolated and r["conforming"] == r["records_checked"]
+    finally:
+        learned._F = orig
+        detectors._memo["mtime"] = "stale"
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -504,6 +541,8 @@ def run() -> bool:
           _measure_spellings_ok())
     check("principles: invented motives flagged, shared behavior merged, rewrites scoped",
           _principles_ok())
+    check("switches: per product, inactive drops a requirement, active adds one, no leaks",
+          _switches_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

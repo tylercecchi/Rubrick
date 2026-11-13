@@ -20,7 +20,7 @@ _EMPTY = {"disambiguation_rules": [], "role_exemplars": {},
           "promoted_roles": {}, "promoted_treatments": {}, "promoted_moments": {},
           "promoted_facets": {}, "discarded": {}, "moment_corrections": {},
           "locality_overrides": {}, "promoted_patterns": {}, "learned_detectors": {},
-          "promoted_absences": {}, "job_overrides": {}}
+          "promoted_absences": {}, "job_overrides": {}, "switches": {}}
 
 
 def load() -> dict:
@@ -65,6 +65,31 @@ def record_intent(subject: str, decision: str) -> None:
 
 def intent_decision(subject: str) -> str | None:
     return load()["intent_decisions"].get(subject)
+
+
+# --- switches: every item in a product's system is ACTIVE or INACTIVE, per product ---
+# The scope rule: a product's own decisions (switch states, confirmations, principle
+# wording, description overrides, interaction-purpose corrections) are stored PER PRODUCT;
+# learned KNOWLEDGE (promoted vocabulary, detectors, effect locality) stays global. A
+# drifting ticker can be one product's identity and a mistake in another.
+def record_switch(product: str, key: str, state: str) -> None:
+    """state = 'on' (active) | 'off' (inactive), set by the designer. Recording the item's
+    current state is how a designer CONFIRMS Rubrick's default ('keep inactive')."""
+    assert state in ("on", "off"), state
+    d = load()
+    d["switches"].setdefault(product, {})[key] = {"state": state, "by": "you"}
+    save(d)
+
+
+def switch(product: str, key: str) -> str | None:
+    """The designer's state for this item in this product: 'on' | 'off' | None (not set).
+    Legacy global intent decisions (CAPTURE/DISCARD) still apply as a fallback."""
+    d = load()
+    ent = d.get("switches", {}).get(product, {}).get(key)
+    if ent:
+        return ent["state"]
+    legacy = d["intent_decisions"].get(key)
+    return {"CAPTURE": "on", "DISCARD": "off"}.get(legacy) if legacy else None
 
 
 # --- rationale -> disposition prior (soft facets) ---
@@ -160,14 +185,18 @@ def locality_override(subject: str) -> str | None:
 
 
 # --- moment corrections (designer fixes a mis-inferred interaction moment) ---
-def record_moment_correction(stem: str, from_moment: str, to_moment: str) -> None:
+def record_moment_correction(stem: str, from_moment: str, to_moment: str, product: str = "") -> None:
     d = load()
-    d["moment_corrections"][f"{stem}:{from_moment}"] = to_moment
+    key = f"{product}::{stem}:{from_moment}" if product else f"{stem}:{from_moment}"
+    d["moment_corrections"][key] = to_moment
     save(d)
 
 
-def moment_correction(stem: str, moment: str) -> str | None:
-    return load()["moment_corrections"].get(f"{stem}:{moment}")
+def moment_correction(stem: str, moment: str, product: str = "") -> str | None:
+    """Product-scoped correction first (component names collide across products); a
+    legacy unscoped one still applies as fallback."""
+    m = load()["moment_corrections"]
+    return (m.get(f"{product}::{stem}:{moment}") if product else None) or m.get(f"{stem}:{moment}")
 
 
 # --- discards (a novel move the designer rejected — stop re-surfacing it) ---

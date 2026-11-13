@@ -142,7 +142,7 @@ def generate_disposition(kind: str, delta: list[str], *, context: dict | None = 
         cache[key] = resp.parsed_output.model_dump()
         _DISP_CACHE.write_text(json.dumps(cache, indent=2))
         disp = Disposition(resp.parsed_output.id, resp.parsed_output.prior)
-    r = learned.rationale(disp.id)  # a designer-refined 'why' overrides the generated one
+    r = learned.rationale(disp.id, product=product_key)  # the designer's wording wins
     if r:
         disp.prior = r
     return disp
@@ -255,6 +255,28 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         dirs = [str(pathlib.Path(d).relative_to(repo)) for d in source_dirs(repo, comps)]
         log.append(f"coverage: {len(sample_components)} .tsx files across {dirs}")
 
+    # what the product is FOR — extracted once (sticky across compiles), shared by every
+    # principle (so the "why" is about THIS product) and by the generic-twin baseline
+    jobs0 = None
+    try:
+        from rubrick.absences import extract_jobs
+        jobs0 = extract_jobs(repo, gcss, comps)
+    except Exception as e:
+        log.append(f"jobs: SKIPPED ({type(e).__name__}) — principles generated without product context")
+    pctx = {"product": jobs0.product_kind, "jobs": jobs0.jobs} if jobs0 and jobs0.jobs else None
+
+    # every switchable item in this product's system, active or not (the UI renders this;
+    # the records below hold only ACTIVE items, so checks read only what's active)
+    from rubrick.absences import _cat
+    catalog: list[dict] = []
+
+    def sw(key: str) -> str | None:
+        return learned.switch(product_key, key)
+
+    def why(kind: str, moves, where: str) -> Disposition:
+        return generate_disposition(kind, sorted(moves), product_key=product_key,
+                                    context={**pctx, "where": where} if pctx else None)
+
     def add_disp(d: Disposition) -> Disposition:
         dispositions[d.id] = d
         return d
@@ -319,9 +341,9 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             # invented fresh each run — including them made self-conformance flap.
             orig_delta = obs.grounded_set() - def_fn()
             # intent-confirmation: designer can DISCARD a captured move or CAPTURE (rescue) a thin one
-            delta = {f for f in orig_delta if learned.intent_decision(f"{facet}:{f}") != "DISCARD"}
-            rescued = {f for f in obs.grounded_set()
-                       if learned.intent_decision(f"{facet}:{f}") == "CAPTURE"}
+            # the product's switches: OFF drops a captured move; ON rescues a thin one
+            delta = {f for f in orig_delta if sw(f"{facet}:{f}") != "off"}
+            rescued = {f for f in obs.grounded_set() if sw(f"{facet}:{f}") == "on"}
             delta |= rescued
             novel = obs.feature_set() - obs.grounded_set()
             for nf in getattr(obs, "novel_features", []):
@@ -340,6 +362,10 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             recorded = len(delta) >= 2 or bool(rescued) or disciplined
             for f in sorted(orig_delta | rescued):
                 intent_items.append({"subject": f"{facet}:{f}", "captured": recorded and f in delta})
+            recorded_by_default = len(orig_delta) >= 2 or disciplined
+            for f in sorted(orig_delta | rescued):
+                default = "on" if (f in orig_delta and recorded_by_default) else "off"
+                catalog.append(_cat(f"{facet}:{f}", "add", default, product_key, label=f, area=facet))
             if recorded and (delta or disciplined):
                 application = []
                 if facet == "color":  # HOW color is applied (kind→role bindings), not just which
@@ -411,7 +437,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
                                 persistent_effect=eb.persistent_effect, affects=eb.affects,
                                 frequency_cue=eb.frequency_cue, reversibility_cue=eb.reversibility_cue)
             im = infer_moment(content_key(json.dumps(ctx.model_dump(), sort_keys=True)), ctx)
-            im.moment = learned.moment_correction(stem, im.moment) or im.moment  # designer fix
+            im.moment = learned.moment_correction(stem, im.moment, product=product_key) or im.moment  # designer fix
             # TREATMENTS are DETERMINISTIC (detect_treatments), so the rule's required features
             # and the candidate's re-observation come from the SAME code signatures — no LLM
             # resampling, no recall misses. The LLM is used only for the semantic moment LABEL.
@@ -490,7 +516,8 @@ def compile_product_system(repo: str, gcss: str, comps: str,
             from rubrick.absences import build_baseline, check_component_gestures
             baseline = build_baseline(repo, gcss, comps, jobs=jobs0)
             log += baseline["log"]
-            gt = check_component_gestures(repo, sigs, baseline, comps, gcss)
+            gt = check_component_gestures(repo, sigs, baseline, comps, gcss, product=product_key)
+            catalog.extend(gt["catalog"])
             log += gt["log"]
             sigs = gt["kept"]
             for r in gt["review"]:
@@ -520,9 +547,10 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     nrec = len(styles) + len(surfaces) + len(rules) + (1 if composition else 0) + len(components)
     try:
         from rubrick.absences import observe_absences
-        ab = observe_absences(repo, gcss, comps, designed=nrec >= 2,
+        ab = observe_absences(repo, gcss, comps, designed=nrec >= 2, product=product_key,
                               baseline=baseline if baseline["twins"] else None)
         subtractions = ab["subtractions"]
+        catalog.extend(ab["catalog"])
         pending += ab["pending"]
         observed_absences = ab["observed"]
         log += ab["log"]
@@ -576,17 +604,41 @@ def compile_product_system(repo: str, gcss: str, comps: str,
     except Exception as e:
         log.append(f"capabilities: SKIPPED ({type(e).__name__}: {e})")
 
+    # the product's switches over the structural records: OFF drops the requirement
+    for sr in surfaces:
+        catalog.append(_cat(f"surface:{sr.applies_to}", "add", "on", product_key, label=sr.applies_to))
+    surfaces = [sr for sr in surfaces if sw(f"surface:{sr.applies_to}") != "off"]
+    for r in rules:
+        catalog.append(_cat(f"rule:{r.applies_to}", "add", "on", product_key, label=r.applies_to))
+    rules = [r for r in rules if sw(f"rule:{r.applies_to}") != "off"]
+    if composition is not None:
+        catalog.append(_cat("composition", "add", "on", product_key, label=composition.archetype))
+        if sw("composition") == "off":
+            composition = None
+    # a principle no active record cites is not shown to builders
+    cited = {x.disposition.id for x in [*styles, *surfaces, *rules]} | (
+        {composition.disposition.id} if composition else set())
+    dispositions = {k: v for k, v in dispositions.items() if k in cited}
+
     ps = ProductSystem(dispositions=dispositions, surfaces=surfaces, rules=rules,
                        styles=styles, composition=composition, components=components,
                        subtractions=subtractions, observed_patterns=observed_patterns,
-                       capabilities=capabilities, observed_absences=observed_absences)
+                       capabilities=capabilities, observed_absences=observed_absences,
+                       catalog=catalog)
     ps._log = log  # type: ignore[attr-defined]
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []
     for p in pending:
         k = (p["name"], p["modality"])
-        if k not in seen:
-            seen.add(k)
+        if k in seen:
+            continue
+        seen.add(k)
+        # a new find is INACTIVE until promoted; one the designer kept inactive for THIS
+        # product stays in the catalog but leaves the review (per product, not global)
+        c = _cat(f"new:{p['modality']}:{p['name']}", "omit" if p["modality"] == "absence" else "add",
+                 "off", product_key, label=p["name"], new=True)
+        ps.catalog.append(c)
+        if not (c["set_by"] == "you" and c["state"] == "off"):
             deduped.append(p)
     ps._pending = deduped  # type: ignore[attr-defined]
     ps._intent = intent_items  # type: ignore[attr-defined]

@@ -1,11 +1,11 @@
 {
   "dispositions": {
-    "expressive-accent": {
-      "prior": "a restrained base lets a single bold color carry emotional emphasis, drawing attention to what matters most",
+    "status-legibility-through-color": {
+      "prior": "Saturated accent color makes an item's status instantly recognizable at a glance, so people grasp state before reading.",
       "calibrated": {}
     },
-    "maximize-information-density": {
-      "prior": "Every element should carry meaningful signal, so pack the most relevant information into the least space without sacrificing clarity.",
+    "information-dense": {
+      "prior": "When people come to see a title and status at a glance, packing information tightly lets them take in everything they need in a single look without hunting across the layout.",
       "calibrated": {}
     }
   },
@@ -17,7 +17,7 @@
       "identity_moves": [
         "expressive-accent"
       ],
-      "because": "expressive-accent",
+      "because": "status-legibility-through-color",
       "concrete": {
         "anchors": [
           "#5e6ad2",
@@ -83,7 +83,7 @@
       "identity_moves": [
         "information-dense"
       ],
-      "because": "maximize-information-density",
+      "because": "information-dense",
       "concrete": {
         "anchors": [],
         "moves": {
@@ -120,7 +120,7 @@
       "detector": {
         "measure": "shadow_blur",
         "zeroed": "none | < 8",
-        "added": ">= 20"
+        "added": ">= 12"
       },
       "builtin": true,
       "violation": "the system is deliberately flat (no drop-shadow depth), but the build adds {v}px shadows \u2014 elevation the identity refuses (violation by excess)",
@@ -142,9 +142,110 @@
   "observed_patterns": [],
   "capabilities": [],
   "observed_absences": [],
+  "catalog": [
+    {
+      "key": "color:expressive-accent",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "expressive-accent",
+      "area": "color"
+    },
+    {
+      "key": "density:information-dense",
+      "section": "add",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "information-dense",
+      "area": "density"
+    },
+    {
+      "key": "absence:ambient-motion",
+      "section": "omit",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "ambient-motion",
+      "why": "2/3 generic twins have it"
+    },
+    {
+      "key": "absence:elevation-shadow",
+      "section": "omit",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "elevation-shadow",
+      "why": "3/3 generic twins have it"
+    },
+    {
+      "key": "absence:single-hue",
+      "section": "omit",
+      "default": "on",
+      "state": "on",
+      "set_by": "rubrick",
+      "label": "single-hue",
+      "why": "3/3 generic twins have it"
+    },
+    {
+      "key": "absence:flat-color",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "flat-color",
+      "why": "1/3 generic twins have it"
+    },
+    {
+      "key": "absence:single-face",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "single-face",
+      "why": "0/3 generic twins have it"
+    },
+    {
+      "key": "new:color:dark-first-neutral-scale",
+      "section": "add",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "dark-first-neutral-scale",
+      "new": true
+    },
+    {
+      "key": "new:absence:status-badge",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "status-badge",
+      "new": true
+    },
+    {
+      "key": "new:absence:status-dot",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "status-dot",
+      "new": true
+    },
+    {
+      "key": "new:absence:row-divider",
+      "section": "omit",
+      "default": "off",
+      "state": "off",
+      "set_by": "rubrick",
+      "label": "row-divider",
+      "new": true
+    }
+  ],
   "_checklist": [
-    "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: a restrained base lets a single bold color carry emotional emphasis, drawing attention to what matters most.",
-    "DENSITY \u2014 carry the moves ['information-dense'].  WHY: Every element should carry meaningful signal.",
+    "COLOR \u2014 carry the moves ['expressive-accent'] \u00b7 APPLICATION: keep ['accent'] color to marking (data/text/interactive), never flood it onto surfaces \u00b7 ground is DARK (tonality 0.08) \u2014 match that polarity.  WHY: Saturated accent color makes an item's status instantly recognizable at a glance.",
+    "DENSITY \u2014 carry the moves ['information-dense'].  WHY: When people come to see a title and status at a glance, packing information tightly lets them take in everything they need in a single look without hunting across the layout.",
     "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation). Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."

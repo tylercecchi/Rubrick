@@ -227,6 +227,23 @@ decisions: 2 flips before sticky jobs (every twin regenerated — majority votin
 after, with one twin or three. (Stability came from sticky jobs; three twins guard against a single
 generation's quirk deciding a capture, which this probe doesn't isolate.)
 
+## Switches — a product system is toggled, not edited
+
+Every candidate Rubrick finds is an item with a switch: **active** or **inactive**, in one of two
+sections — **additions** (builds must include it) and **omissions** (builds must leave it out). The
+manifest's `catalog` lists every item with its `default`, `state` and `set_by` (rubrick | you);
+the records hold only ACTIVE items, so checks read only what's active. Defaults come from the
+evidence: clear differences start active; uncertain ones (survey finds, minority-vote omissions,
+default-for-purpose gestures, new finds) start inactive until the designer turns them on.
+
+**Scope rule.** A product's own decisions are stored **per product** (`learned.switches[product]`,
+plus principle wording, description overrides and interaction-purpose corrections); learned
+**knowledge** — promoted vocabulary, detectors, effect locality — stays **global**. Legacy global
+CAPTURE/DISCARD intent decisions still apply as a fallback. The review file's `switches` section
+takes `on | off | keep` per item; a new find activates through `pending_promotions` (it needs a
+name, which becomes global vocabulary) and is made active for that product only. Changes apply on
+the next compile. The eval proves it end to end on a real compile (`_switches_ok`).
+
 ## What the detectors read (coverage)
 
 All scanners consume **one shared discovery list** — `discover_components` in

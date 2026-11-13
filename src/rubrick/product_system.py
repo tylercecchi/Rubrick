@@ -588,6 +588,10 @@ class ProductSystem:
     # promoted-but-not-yet-gated deliberate OMISSIONS this product maintains (the open
     # subtractive channel, rubrick.absences): instructed, verified once a detector is admitted.
     observed_absences: list = field(default_factory=list)
+    # every switchable item in the product's system, ACTIVE or not, with its default and who
+    # set it — {key, section: add|omit, default, state: on|off, set_by: rubrick|you, ...}.
+    # The records above hold only active items, so checks read only what's active.
+    catalog: list = field(default_factory=list)
 
     def surface_for(self, role: str):
         return next((s for s in self.surfaces if s.applies_to == role), None)
@@ -635,6 +639,7 @@ class ProductSystem:
             "observed_patterns": self.observed_patterns,
             "capabilities": self.capabilities,
             "observed_absences": self.observed_absences,
+            "catalog": self.catalog,
         }
         m["_checklist"] = self._checklist()
         m["_guide"] = self._guide()
@@ -843,4 +848,5 @@ def load_product_system(path: str) -> ProductSystem:
                          subtractions=m.get("subtractions", []),
                          observed_patterns=m.get("observed_patterns", []),
                          capabilities=m.get("capabilities", []),
-                         observed_absences=m.get("observed_absences", []))
+                         observed_absences=m.get("observed_absences", []),
+                         catalog=m.get("catalog", []))
