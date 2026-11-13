@@ -3,7 +3,8 @@
     rubrick ui [--port 7317] [--no-browser]   open the local app (review and toggle systems)
     rubrick mcp                               run the MCP server (same as `rubrick-mcp`)
 
-Data lives in $RUBRICK_HOME, or the current directory.
+Data lives in $RUBRICK_HOME, the folder chosen in the app's setup, the current folder if it
+already holds Rubrick data, or ~/Rubrick.
 """
 
 from __future__ import annotations

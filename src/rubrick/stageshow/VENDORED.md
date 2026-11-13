@@ -1,6 +1,6 @@
 # Vendored: Stageshow
 
-`stage/stageshow/` is a copy of [Stageshow](https://github.com/benjitaylor/skills/tree/main/stageshow)
+`src/rubrick/stageshow/` (this folder) is a copy of [Stageshow](https://github.com/benjitaylor/skills/tree/main/stageshow)
 by Benji Taylor, MIT licensed (`stageshow/LICENSE`, `stageshow/NOTICE.md`), taken at commit
 `299140fafd08df55a9c234e610c3f64af3f45531` (2026-11-04).
 
@@ -21,4 +21,4 @@ What was changed or left out:
 
 Everything else (`kit/`, `references/`, `scripts/`, `SKILL.md`) is unmodified. To update,
 re-copy from upstream and re-apply the brands stub, then rebuild the runtime
-(`stage/README.md`).
+(`stage/README.md` at the repo root).

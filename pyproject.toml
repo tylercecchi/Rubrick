@@ -18,6 +18,12 @@ dependencies = [
   "mcp>=1.28,<2",
   "pydantic>=2.13",
   "pydantic-settings>=2.14",
+  # the API key entered in the app is kept in the OS keychain (macOS Keychain, Windows
+  # Credential Locker, Secret Service), never on a command line
+  "keyring>=25",
+  # Intel Macs: cryptography 46+ ships no prebuilt wheel there and fails to build from source
+  # (it arrives via mcp -> pyjwt[crypto]); pin to the last release that has one.
+  "cryptography<46; sys_platform == 'darwin' and platform_machine == 'x86_64'",
 ]
 
 [project.optional-dependencies]
@@ -42,4 +48,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 # the local app's page ships inside the package
-rubrick = ["ui/*.html", "ui/stage/*.js", "ui/stage/*.css"]
+rubrick = ["ui/*.html", "ui/stage/*.js", "ui/stage/*.css",
+           # vendored Stageshow: the docs the drawing prompts are built from, and the film tools
+           "stageshow/*.md", "stageshow/LICENSE", "stageshow/package.json",
+           "stageshow/references/*", "stageshow/scripts/*", "stageshow/examples/**/*", "stageshow/kit/**/*"]
