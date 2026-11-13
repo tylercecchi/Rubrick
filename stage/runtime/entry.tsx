@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
 import { transform } from 'sucrase'
-import * as Kit from '../stageshow/kit'
+import * as Kit from '../../src/rubrick/stageshow/kit'
 
 type Scene = { code: string; css?: string; tokens?: Record<string, string> }
 

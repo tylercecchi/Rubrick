@@ -660,6 +660,16 @@ def compile_product_system(repo: str, gcss: str, comps: str,
                        capabilities=capabilities, observed_absences=observed_absences,
                        catalog=catalog, principles=principles)
     ps._log = log  # type: ignore[attr-defined]
+    # plain words for each new find (one batched, cached call), so it reads as an idea
+    try:
+        from rubrick.absences import describe_finds
+        whats = describe_finds(pending, getattr(jobs0, "product_kind", "") if jobs0 else "")
+        for p in pending:
+            w = whats.get(f"{p['modality']}:{p['name']}")
+            if w:
+                p["what"] = w
+    except Exception as e:
+        log.append(f"find descriptions: SKIPPED ({type(e).__name__}: {e})")
     # dedup pending by (name, modality), preserving first evidence
     seen, deduped = set(), []
     for p in pending:
@@ -672,7 +682,7 @@ def compile_product_system(repo: str, gcss: str, comps: str,
         c = _cat(f"new:{p['modality']}:{p['name']}", "omit" if p["modality"] == "absence" else "add",
                  "off", product_key, label=p["name"], new=True)
         # the find describes itself in the system, not only in the review file
-        for f in ("evidence", "instead", "against", "host", "confidence", "component"):
+        for f in ("what", "evidence", "instead", "against", "host", "confidence", "component"):
             if p.get(f):
                 c[f] = p[f]
         c["principle"] = member(c["key"])

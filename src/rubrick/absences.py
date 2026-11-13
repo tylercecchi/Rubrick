@@ -60,6 +60,68 @@ def _cached_parse(key: str, prompt: str, output_format, *, max_tokens: int,
     return out
 
 
+
+# --- plain words for new finds ----------------------------------------------------------
+
+class _FindWhat(BaseModel):
+    key: str
+    what: str
+
+
+class _FindWhats(BaseModel):
+    items: list[_FindWhat]
+
+
+_WHAT_CACHE = paths.cache_dir() / "find_what_cache.json"
+
+
+def describe_finds(finds: list[dict], product_kind: str = "") -> dict[str, str]:
+    """One plain sentence per new find — what the product does, in a designer's words — so a
+    find reads as an idea, not as the code it was seen in. Keyed "<modality>:<name>". Cached
+    per find (name + evidence), so a recompile only describes finds that are new or changed.
+    Omissions already carry plain words (`instead`) and are skipped."""
+    cache = json.loads(_WHAT_CACHE.read_text()) if _WHAT_CACHE.exists() else {}
+    out, todo = {}, []
+    for f in finds:
+        if f.get("modality") == "absence" or not f.get("evidence"):
+            continue
+        key = f"{f['modality']}:{f['name']}"
+        ck = content_key("|".join([key, str(f.get("evidence", "")), str(f.get("component", ""))]))
+        if ck in cache:
+            out[key] = cache[ck]
+        else:
+            todo.append((key, ck, f))
+    if not todo:
+        return out
+    listing = "\n".join(
+        f"- key: {key}\n  kind of find: {f['modality']}\n  working name: {f['name']}"
+        + (f"\n  seen in: {f['component']}" if f.get("component") else "")
+        + f"\n  evidence: {str(f.get('evidence', ''))[:1500]}" for key, _ck, f in todo)
+    prompt = f"""A design tool found these things in a product{f" ({product_kind})" if product_kind else ""} that a
+typical build of the same kind of product wouldn't have. Each comes with the code it was seen in.
+
+For each one, write ONE plain sentence (8 to 22 words) saying what the product does, the way a
+product designer would describe it to another designer: what a person sees or feels. No code,
+no CSS property or function names, no hex values, no file or class names, no units unless
+they matter (say "a slow, continuous sweep", not "18s linear infinite"). No praise and no
+hedging. Start with what it is or does, e.g. "Numbers line up in fixed-width columns so live
+readings don't jitter as they change."
+
+{listing}
+
+Return one item per key, using the key exactly as given."""
+    try:
+        res = _cached_parse(content_key("find-whats|" + "|".join(ck for _k, ck, _f in todo)), prompt,
+                            _FindWhats, max_tokens=4000)
+    except Exception:
+        return out  # descriptions are a reading aid; a compile never fails for want of one
+    by_key = {i.key: i.what.strip() for i in res.items if i.what.strip()}
+    for key, ck, _f in todo:
+        if key in by_key:
+            out[key] = cache[ck] = by_key[key]
+    _WHAT_CACHE.write_text(json.dumps(cache, indent=2))
+    return out
+
 def _source_files(repo: str, gcss: str, comps: str) -> list[tuple[str, str]]:
     from rubrick.discover import discover_components
     files = []
@@ -619,6 +681,24 @@ def observe_absences(repo: str, gcss: str, comps: str, *, designed: bool,
             captured.append(rec if default == "on" else {**rec, "baseline": rec["baseline"] + "; designer confirmed"})
         elif default == "off" and c["set_by"] == "rubrick":
             uncertain.append(rec)
+    # omissions the designer declared for this product: part of its system whatever the twins
+    # do (the product's word is final). Checked by their learned detector when one was admitted;
+    # otherwise builders are told and nothing gates blind.
+    if product:
+        reg, in_cat = registry(), {c["key"] for c in catalog}
+        for name, dec in learned.declared_omissions(product).items():
+            if f"absence:{name}" in in_cat:
+                continue
+            label = dec.get("label") or name
+            c = _cat(f"absence:{name}", "omit", "on", product, label=label, declared=True,
+                     why="declared by the designer")
+            catalog.append(c)
+            if c["state"] == "on":
+                ent = reg.get(name)
+                captured.append({"omits": name, "builtin": False, "baseline": "declared by the designer",
+                                 "note": f"deliberately WITHOUT {label}"
+                                         + (f" — {dec['description']}" if dec.get("description") else ""),
+                                 "detector": ent["detector"] if ent else None})
     for r in captured:
         log.append(f"subtraction: OMITS {r['omits']} — {r['note']} [{r['baseline']}]")
     for r in uncertain:

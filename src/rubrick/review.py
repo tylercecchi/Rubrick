@@ -30,7 +30,9 @@ def emit_review(ps, name: str, path: str,
     was seen in). Returns the pending-promotion count; the designer edits only the
     blank fields."""
     pending = getattr(ps, "_pending", [])
-    promotions = [{"name": p["name"], "modality": p["modality"], "evidence": p["evidence"],
+    promotions = [{"name": p["name"], "modality": p["modality"],
+                   **({"what": p["what"]} if p.get("what") else {}),  # plain words; read-only
+                   "evidence": p["evidence"],
                    **({"component": p["component"]} if p.get("component") else {}),
                    # absence tears carry their substitute + the generated generic exemplars
                    # their presence detector will be admitted against

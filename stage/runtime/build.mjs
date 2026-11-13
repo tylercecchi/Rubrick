@@ -9,6 +9,7 @@ await build({
   entryPoints: { runtime: path.join(here, 'entry.tsx') },
   bundle: true, minify: true, format: 'iife', target: 'es2020', outdir: out,
   jsx: 'automatic', loader: { '.svg': 'dataurl' },
+  nodePaths: [path.join(here, '../node_modules')],  // the kit lives in the package, its deps here
   define: { 'process.env.NODE_ENV': '"production"' },
   legalComments: 'eof', logLevel: 'info',
 })

@@ -1,4 +1,4 @@
-"""Scenes — faux product UI, drawn with the vendored Stageshow kit (stage/VENDORED.md).
+"""Scenes — faux product UI, drawn with the vendored Stageshow kit (stageshow/VENDORED.md).
 
 Two kinds, both pictures for the app, never inputs to a compile or a check:
 
@@ -21,7 +21,7 @@ Rubrick sets the LOOK itself: the specimen's ground, surfaces, text, accent, fac
 become the kit's --ss-* tokens on a `.rb-look` class every scene uses, so the materials are the
 product's by construction. A typical build gets `.rb-typical` (neutral framework defaults).
 
-Rehearsal needs Node and Chrome (`stage/` with `npm install`); without them scenes are kept
+Rehearsal needs Node and Chrome (filming is set up in ~/.rubrick/film on first use); without them scenes are kept
 unrehearsed and say so.
 """
 
@@ -46,8 +46,8 @@ SCENE_MODEL = "claude-opus-5-5"   # high-craft code generation; measurement stay
 FIX_ROUNDS = 2
 _PKG = pathlib.Path(__file__).resolve().parent
 RUNTIME_DIR = _PKG / "ui" / "stage"
-STAGE_DIR = _PKG.parents[1] / "stage"                    # repo checkout: vendored kit + film tools
-STAGESHOW = STAGE_DIR / "stageshow"
+STAGESHOW = _PKG / "stageshow"          # vendored Stageshow: skill docs, gold examples, film tools
+PLAYWRIGHT = "1.48.2"                    # the playwright-core Stageshow's film tools are written for
 CHROME_CANDIDATES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
                      "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser")
 
@@ -391,16 +391,55 @@ def _chrome() -> str | None:
     return next((c for c in CHROME_CANDIDATES if pathlib.Path(c).exists()), shutil.which("google-chrome"))
 
 
+def film_dir() -> pathlib.Path:
+    """Rubrick's own filming folder: Stageshow's film scripts plus playwright-core, set up on
+    first use — so rehearsal works for an installed Rubrick, not only a repo checkout."""
+    return paths.config_dir() / "film"
+
+
+_FILM_LOCK = threading.Lock()
+
+
+def _film_ready() -> bool:
+    d = film_dir()
+    src = STAGESHOW / "scripts" / "film.mjs"
+    return ((d / "node_modules" / "playwright-core").exists() and (d / "scripts" / "film.mjs").exists()
+            and (d / "scripts" / "film.mjs").read_bytes() == src.read_bytes())
+
+
 def rehearsal_available() -> str | None:
-    """None when scenes can be filmed, else why not."""
-    if not (STAGESHOW / "scripts" / "film.mjs").exists():
-        return "Stageshow's film tools aren't here (they ship with the repo checkout under stage/)"
-    if not (STAGE_DIR / "node_modules" / "playwright-core").exists():
-        return "run `npm install` in stage/ to enable rehearsal"
-    if not shutil.which("node"):
-        return "Node isn't installed"
+    """None when scenes can be filmed (or can be, once filming is set up), else why not."""
+    if not shutil.which("node") or not shutil.which("npm"):
+        return "Node isn't installed (it's needed to film scenes; https://nodejs.org)"
     if not _chrome():
         return "Chrome isn't installed (or set CHROME_PATH)"
+    return None
+
+
+def ensure_filming(log=print) -> str | None:
+    """Set up the filming folder if it isn't ready: copy Stageshow's film scripts (refreshed
+    when the vendored copy changes) and install playwright-core there. One time, ~10 seconds.
+    Returns None when ready, else why filming isn't available."""
+    if why := rehearsal_available():
+        return why
+    with _FILM_LOCK:
+        if _film_ready():
+            return None
+        d = film_dir()
+        log("Setting up filming (one time)…")
+        d.mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(d / "scripts", ignore_errors=True)
+        shutil.copytree(STAGESHOW / "scripts", d / "scripts")
+        (d / "package.json").write_text(json.dumps(
+            {"name": "rubrick-film", "private": True, "type": "module",
+             "dependencies": {"playwright-core": PLAYWRIGHT}}, indent=2))
+        try:
+            r = subprocess.run(["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"],
+                               cwd=str(d), capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            return "setting up filming timed out (npm install)"
+        if r.returncode != 0 or not _film_ready():
+            return f"setting up filming failed: {(r.stderr or r.stdout).strip()[-300:]}"
     return None
 
 
@@ -455,9 +494,9 @@ def _film(url: str, out_png: pathlib.Path, timeout: float = 150) -> tuple[bool |
     # mid-film, which can't happen here) — the wrapper holds all output until its child exits,
     # and the child lingers for minutes after the verdict.
     env = {**os.environ, "CHROME_PATH": _chrome() or "", "FILM_CHILD": "1"}
-    proc = subprocess.Popen(["node", str(STAGESHOW / "scripts" / "film.mjs"), url, "--select", ".ss-stage",
+    proc = subprocess.Popen(["node", str(film_dir() / "scripts" / "film.mjs"), url, "--select", ".ss-stage",
                              "--gate", "--count", "12", "--every", "1300", "--out", str(out_png)],
-                            cwd=str(STAGESHOW), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            cwd=str(film_dir()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, env=env, start_new_session=True)
     lines_out: list[str] = []
     done = threading.Event()
@@ -490,9 +529,9 @@ def _film(url: str, out_png: pathlib.Path, timeout: float = 150) -> tuple[bool |
 
 
 def rehearse(scenes: list[dict], *, look: str, fonts: list[dict], repo: str | None,
-             workdir: pathlib.Path) -> list[dict]:
+             workdir: pathlib.Path, log=print) -> list[dict]:
     """Film each scene with the gate. Adds rehearsal={passed, lines} and a contact-sheet path."""
-    why = rehearsal_available()
+    why = ensure_filming(log)
     if why:
         for s in scenes:
             s["rehearsal"] = {"passed": None, "lines": [], "note": f"not rehearsed: {why}"}
@@ -571,7 +610,7 @@ def draw(brief: str, context: str, *, look: str, fonts: list[dict], repo: str | 
             work = pathlib.Path(tmp) / f"r{round_}"
             work.mkdir()
             log("rehearsing with Stageshow's gate…")
-            rehearse(scenes, look=look, fonts=fonts, repo=repo, workdir=work)
+            rehearse(scenes, look=look, fonts=fonts, repo=repo, workdir=work, log=log)
             for s in scenes:
                 if s["id"] not in best or _score(s) >= _score(best[s["id"]]):
                     best[s["id"]] = s

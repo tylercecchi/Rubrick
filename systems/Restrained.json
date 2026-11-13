@@ -139,6 +139,19 @@
       "builtin": true,
       "violation": "the system is single-hue (one accent family), but the build uses {v} hue families \u2014 a second color the identity refuses",
       "baseline": "3/3 generic twins have it"
+    },
+    {
+      "omits": "toast-notifications",
+      "note": "deliberately WITHOUT toast-notifications \u2014 Status changes show inline, on the thing that changed \u2014 never as a popup notification in a corner.",
+      "detector": {
+        "all": [
+          "\\bToaster\\b|\\btoast\\.(success|error|info|warning|warn|loading|custom|promise|message|dismiss)\\s*\\(|\\bSnackbar\\b|anchorOrigin|position=[\"'](top|bottom)-(left|right)[\"']|\\bfixed\\b.{0,40}\\b(top|bottom)-\\d.{0,40}\\b(left|right)-\\d"
+        ],
+        "none": [],
+        "flags": ""
+      },
+      "builtin": false,
+      "baseline": "0/3 generic twins have it; designer confirmed"
     }
   ],
   "observed_patterns": [],
@@ -216,6 +229,16 @@
       "principle": null
     },
     {
+      "key": "absence:toast-notifications",
+      "section": "omit",
+      "default": "off",
+      "state": "on",
+      "set_by": "you",
+      "label": "toast-notifications",
+      "why": "0/3 generic twins have it",
+      "principle": null
+    },
+    {
       "key": "new:color:dark-first-neutral-scale",
       "section": "add",
       "default": "off",
@@ -223,6 +246,7 @@
       "set_by": "rubrick",
       "label": "dark-first-neutral-scale",
       "new": true,
+      "what": "The panel sits on a near-black background with light text, reading as a calm, dark-mode-native display from the start.",
       "evidence": "gray ramp anchored at near-black --gray-0 #08090a as page background with light text --gray-7/--gray-8, a deliberately dark-mode-native chrome",
       "principle": "color-as-signal"
     },
@@ -234,9 +258,9 @@
       "set_by": "rubrick",
       "label": "status-badge",
       "new": true,
-      "evidence": "No sp-badge / badge / pill class or bordered rounded container exists anywhere in the product; status is rendered as a bare styled span.",
-      "instead": "Inline colored text label (\"Active\" in the accent hue) states the status directly.",
-      "host": "Panel.tsx status value span <span style={{ fontSize: 13, color: \"#5e6ad2\" }}>Active</span>",
+      "evidence": "No 'sp-badge', 'badge', or pill class in globals.css or Panel.tsx; status is rendered as a bare <span style={{fontSize:13,color:'#5e6ad2'}}>Active</span> with no filled/bordered container.",
+      "instead": "inline colored text label \u2014 the status word itself is colored in the accent",
+      "host": "the status <span> in Panel.tsx ('Active')",
       "confidence": "high",
       "principle": null
     },
@@ -248,24 +272,22 @@
       "set_by": "rubrick",
       "label": "status-dot",
       "new": true,
-      "evidence": "No dot element, bullet, or border-radius:50% circle appears anywhere in the product's CSS or inline styles.",
-      "instead": "The accent-colored status text itself carries the state signal.",
-      "host": "Panel.tsx status value span <span style={{ fontSize: 13, color: \"#5e6ad2\" }}>Active</span>",
+      "evidence": "No 'sp-badge-dot', dot, or <svg> glyph anywhere in the product; status carries no leading indicator mark.",
+      "instead": "colored text conveys state without a separate dot glyph",
+      "host": "the status <span> in Panel.tsx ('Active')",
       "confidence": "high",
       "principle": null
     },
     {
-      "key": "new:absence:row-divider",
+      "key": "new:absence:row-hover",
       "section": "omit",
       "default": "off",
       "state": "off",
       "set_by": "rubrick",
-      "label": "row-divider",
+      "label": "row-hover",
       "new": true,
-      "evidence": "No border-top, border-bottom, or hairline between the stacked rows anywhere; only spacing values are set.",
-      "instead": "Whitespace (gap:12, marginTop:4) separates the rows.",
-      "against": ".row class is defined in globals.css with padding/gap but never applied \u2014 Panel uses inline styles instead.",
-      "host": "The stacked rows inside Panel.tsx (status row and the 'Restraint is the identity.' row)",
+      "evidence": "No :hover selector or hover state in globals.css or the inline-styled rows; rows are static with no background change on pointer.",
+      "host": "the .row entries in Panel.tsx",
       "confidence": "medium",
       "principle": null
     }
@@ -302,7 +324,8 @@
     "DENSITY \u2014 carry the moves ['information-dense'].  WHY: Packing details tightly lets people take in an item's title and status at a glance without hunting across space.",
     "SUBTRACTION \u2014 the product is STATIC \u2014 no ambient / perpetual motion. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
     "SUBTRACTION \u2014 the product is deliberately FLAT \u2014 no drop-shadow depth (separation by hairlines, not elevation). Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
-    "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."
+    "SUBTRACTION \u2014 the product is SINGLE-HUE \u2014 one accent hue family only, no multi-color palette. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess).",
+    "SUBTRACTION \u2014 the product is deliberately WITHOUT toast-notifications \u2014 Status changes show inline, on the thing that changed \u2014 never as a popup notification in a corner.. Do NOT add it back; this identity is defined by its ABSENCE (adding it is a violation by excess)."
   ],
   "_guide": {
     "deployment_frequency": "An identity move has a HOME. Carrying a move does NOT mean maximizing it: the source deploys its strongest moves \u2014 textures, glows, loops, display type \u2014 at a specific frequency (the checklist's DEPLOYMENT notes give the observed rate), and that restraint is itself part of the identity. Applying a reserved move to every element destroys the figure/ground contrast that makes it read as identity; the build goes noisy and one-dimensional, and the gate flags clear over-application. Match the deployment pattern, not just the move.",

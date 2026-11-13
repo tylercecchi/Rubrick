@@ -81,7 +81,84 @@ def load_key() -> str | None:
         if key := _key_from_dotenv(paths.home() / name):
             return key
 
+    return _saved_key()
+
+
+# --- the key entered in the app's setup -------------------------------------------------
+# Kept in the OS keychain (service "rubrick", account "anthropic-api-key"); where no keychain
+# exists, in ~/.rubrick/credentials readable only by this user. Never returned to a page.
+
+_KEYCHAIN = ("rubrick", "anthropic-api-key")
+
+
+def _credentials_file() -> pathlib.Path:
+    return paths.config_dir() / "credentials"
+
+
+def _saved_key() -> str | None:
+    try:
+        import keyring
+        if key := keyring.get_password(*_KEYCHAIN):
+            return key
+    except Exception:
+        pass
+    f = _credentials_file()
+    if f.exists():
+        return _key_from_dotenv(f)
     return None
+
+
+def key_source() -> str | None:
+    """Where the key comes from — for display only (the key itself is never shown)."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "the ANTHROPIC_API_KEY environment variable"
+    override = os.environ.get("RUBRICK_ENV_FILE")
+    if override and _key_from_dotenv(pathlib.Path(override).expanduser()):
+        return f"{override}"
+    for name in (".env.local", ".env"):
+        if _key_from_dotenv(paths.home() / name):
+            return f"{name} in the data folder"
+    try:
+        import keyring
+        if keyring.get_password(*_KEYCHAIN):
+            return "the system keychain"
+    except Exception:
+        pass
+    if _credentials_file().exists() and _key_from_dotenv(_credentials_file()):
+        return "~/.rubrick/credentials"
+    return None
+
+
+def check_key(key: str) -> str | None:
+    """None when Anthropic accepts the key, else why not. A free call (no tokens)."""
+    import anthropic
+    try:
+        anthropic.Anthropic(api_key=key, max_retries=1, timeout=20).models.retrieve("claude-opus-4-8")
+        return None
+    except anthropic.AuthenticationError:
+        return "Anthropic didn’t accept that key."
+    except anthropic.PermissionDeniedError:
+        return "That key works but can’t use the models Rubrick needs."
+    except anthropic.APIConnectionError:
+        return "Couldn’t reach Anthropic — check your connection."
+    except anthropic.APIStatusError as e:
+        return f"Anthropic returned an error ({e.status_code})."
+
+
+def save_key(key: str) -> str:
+    """Store the key; returns where it went."""
+    try:
+        import keyring
+        keyring.set_password(*_KEYCHAIN, key)
+        if keyring.get_password(*_KEYCHAIN) == key:
+            return "the system keychain"
+    except Exception:
+        pass
+    f = _credentials_file()
+    f.touch(mode=0o600, exist_ok=True)
+    os.chmod(f, 0o600)
+    f.write_text(f"ANTHROPIC_API_KEY={key}\n")
+    return "~/.rubrick/credentials"
 
 
 # Backwards-compatible alias — every module imports `_load_key`.
