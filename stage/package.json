@@ -1,0 +1,19 @@
+{
+  "name": "rubrick-stage",
+  "private": true,
+  "description": "Builds Rubrick's faux-UI runtime from the vendored Stageshow kit, and films scenes with Stageshow's gate.",
+  "type": "module",
+  "scripts": {
+    "build": "node runtime/build.mjs"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "lucide-react": "0.468.0",
+    "sucrase": "3.35.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "playwright-core": "1.48.2"
+  }
+}
