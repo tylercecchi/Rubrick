@@ -145,6 +145,13 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:50
 </div>
 
 <div id="frames" aria-hidden="false"></div>
+<dialog id="omitDlg"><form method="dialog" id="omitForm">
+  <h3 style="margin:0;font-size:20px;font-weight:500">Add an omission</h3>
+  <p class="p" id="omitLead">Something this product deliberately leaves out. Builders will be told to leave it out too, and Rubrick tries to write a check that catches a build adding it back.</p>
+  <label class="f">What it leaves out<input class="field" name="label" required placeholder="Toast notifications" autocomplete="off"></label>
+  <label class="f">What it does instead, or why<textarea class="field" name="description" rows="3" placeholder="Status changes show inline, on the thing that changed — never as a popup in the corner."></textarea></label>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn pri" value="ok">Add omission →</button></div>
+</form></dialog>
 <dialog id="addDlg"><form method="dialog" id="addForm">
   <h3 style="margin:0;font-size:20px;font-weight:500">Add a product</h3>
   <p class="p">Rubrick reads the product’s source and compiles its system. This takes a few minutes the first time.</p>
@@ -225,7 +232,7 @@ function progress(p, label) {
   return `<span class="prog" role="progressbar" aria-label="${esc(label)}"><span class="track busy"><i></i></span><span>${esc(label)}</span></span>`;
 }
 function queued(key) { return !!S.d?.drawing_queue?.keys?.includes(key); }
-async function refresh() { await loadProducts(); const [h, hk] = decodeURIComponent(location.hash.slice(1)).split("/"); if (!S.cur && S.products.some((p) => p.name === h)) { S.cur = h; if (hk) { S.sel = hk; S.view = "all"; } } if (!S.cur && S.products.length) S.cur = S.products[0].name; await loadDetail(); render(); }
+async function refresh() { S.setup = await api("/api/setup"); if (S.setup.needs_setup && !S.setupSeen) { S.view = "setup"; S.setupSeen = true; } await loadProducts(); const [h, hk] = decodeURIComponent(location.hash.slice(1)).split("/"); if (!S.cur && S.products.some((p) => p.name === h)) { S.cur = h; if (hk) { S.sel = hk; S.view = "all"; } } if (!S.cur && S.products.length) S.cur = S.products[0].name; await loadDetail(); render(); }
 // drawing and bento jobs run beside the page, not blocking it like a compile
 async function sideJob(slot, promise, onDone) {
   try {
@@ -353,12 +360,56 @@ function rail() {
   const prods = S.products.map((p) => `<button class="prod${p.name === S.cur ? " on" : ""}" data-prod="${esc(p.name)}"><span class="sw8" style="background:${esc(p.swatch)}"></span><span style="flex:1 1 auto;min-width:0">${esc(p.name)}<small>${p.has_catalog ? (p.pending ? "Changes waiting" : "Compiled " + ago(p.compiled_at)) : "Needs a recompile"}</small></span>${p.needs ? `<span style="font-size:12px;color:var(--mute)">${p.needs}</span>` : ""}</button>`).join("");
   return `<div class="logo"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect><path d="M13 7.5h4.5V12"></path></svg></i>Rubrick</div>
   <nav style="display:flex;flex-direction:column;gap:2px">
-    <button class="nav${S.view !== "learned" ? " on" : ""}" data-view="needs">Product system</button>
+    <button class="nav${!["learned", "setup"].includes(S.view) ? " on" : ""}" data-view="needs">Product system</button>
     <button class="nav${S.view === "learned" ? " on" : ""}" data-view="learned">What Rubrick has learned</button>
+    <button class="nav${S.view === "setup" ? " on" : ""}" data-view="setup">Settings${S.setup && !S.setup.has_key ? ` <span class="pcount">· needs a key</span>` : ""}</button>
   </nav>
   <div style="display:flex;flex-direction:column;gap:6px"><span class="cap">Products</span>${prods || `<span class="cap">None yet.</span>`}
     <button class="nav" data-add style="color:var(--mute)">+ Add a product</button></div>`;
 }
+// ---------------------------------------------------------------- setup (first run + Settings)
+function setupView() {
+  const st = S.setup || {}, first = st.needs_setup;
+  const folderNote = { env: "Set by RUBRICK_HOME where Rubrick was started.", config: "Chosen in setup.",
+    folder: "This folder already had Rubrick’s work in it, so Rubrick is using it.", default: "The default for a new setup." }[st.home_source] || "";
+  const keyBox = st.has_key
+    ? `<p class="p">Rubrick has a key, from ${esc(st.key_source)}. ${/environment variable/.test(st.key_source) ? "That one always wins while it’s set." : "It’s never shown again."}</p>
+       <details class="adjust"><summary>Use a different key</summary>${keyForm()}</details>`
+    : `<p class="p">Rubrick uses Claude to compile systems, run checks and draw. Paste an Anthropic API key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Rubrick checks it, then keeps it in your system keychain — it’s never shown again or sent anywhere but Anthropic.</p>${keyForm()}`;
+  const film = st.filming ? `Drawings are made but not checked by Stageshow’s gate: ${esc(st.filming)}.`
+    : st.filming_ready ? "Ready. Every drawing is filmed and checked by Stageshow’s gate."
+    : `Node and Chrome are here. Rubrick sets up filming the first time it draws (about 10 seconds), or <button class="linkbtn" data-setupfilm>set it up now</button>.`;
+  const fj = S.filmJob || {};
+  return `<header class="hd"><h1 style="font-size:64px">${first ? "Set up Rubrick" : "Settings"}</h1><p>${first ? "Two things before you start: where Rubrick keeps its work, and the key it uses to read products." : "Where Rubrick keeps its work, and the key it uses."}</p></header>
+  <div class="full" style="padding-top:28px;max-width:760px">
+    <div class="box" style="padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+      <h3 style="margin:0;font-size:20px;font-weight:500">1 · Where Rubrick keeps its work</h3>
+      <p class="p">Products, your switches, drawings and check runs live in this folder — the same one however you start Rubrick.</p>
+      <form id="homeForm" style="display:flex;flex-direction:column;gap:8px"><span class="pick"><input class="field" name="path" value="${esc(st.suggested_home || "")}" autocomplete="off"><button type="button" class="btn" data-pickhome>Choose folder…</button></span>
+      <span class="pcount">${esc(folderNote)}</span></form>
+    </div>
+    <div class="box" style="padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+      <h3 style="margin:0;font-size:20px;font-weight:500">2 · Anthropic API key</h3>${keyBox}
+      ${S.keyMsg ? `<div class="banner ${S.keyMsg.kind}" style="margin:0">${esc(S.keyMsg.text)}</div>` : ""}
+    </div>
+    <div class="box" style="padding:22px 24px;display:flex;flex-direction:column;gap:8px">
+      <h3 style="margin:0;font-size:20px;font-weight:500">Drawings</h3><p class="p">${fj.job ? progress(null, fj.status || "Setting up filming…") : fj.error ? esc(fj.error) : film}</p>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn pri" data-savehome ${st.has_key ? "" : "disabled"}>${first ? "Start using Rubrick →" : "Save"}</button></div>
+    ${S.restarting ? `<div class="banner info" style="margin:0">Restarting Rubrick with the new folder…</div>` : ""}
+  </div>`;
+}
+function keyForm() {
+  return `<form id="keyForm" style="display:flex;gap:8px;margin-top:6px"><input class="field" name="key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" style="flex:1"><button class="btn" data-savekey ${S.keyBusy ? "disabled" : ""}>${S.keyBusy ? "Checking…" : "Check & save"}</button></form>`;
+}
+async function waitForRestart() {
+  S.restarting = true; render();
+  await new Promise((r) => setTimeout(r, 1500));
+  for (let i = 0; i < 40; i++) {
+    try { await api("/api/setup"); location.hash = ""; location.reload(); return; } catch { await new Promise((r) => setTimeout(r, 500)); }
+  }
+}
+
 function bar() {
   const n = needsCount(), all = (S.d?.items || []).length;
   const pill = (v, label, count) => `<button class="ptab${S.view === v ? " on" : ""}" data-view="${v}">${label}${count !== undefined ? ` <span class="pcount">${count}</span>` : ""}</button>`;
@@ -393,7 +444,7 @@ function systemView() {
   return `<p class="blurb">${blurb}</p><div class="cols"><div class="list">
     ${empty ? `<div class="box"><p class="empty" style="padding:24px 16px">Nothing needs a look. Every addition and omission in ${esc(d.name)}’s system has been set or confirmed by you.</p></div>` : ""}
     ${addHTML ? `<div class="box">${secHead("Additions", `What ${esc(d.name)} does that a typical build doesn’t. Active means builds must include it.`, adds)}${addHTML}</div>` : ""}
-    ${omitVis.length ? `<div class="box">${secHead("Omissions", `What ${esc(d.name)} leaves out that a typical build includes. Active means builds must leave it out.`, omits)}<div style="height:6px"></div>${omitVis.map(rowHTML).join("")}</div>` : ""}
+    ${omitVis.length || S.view === "all" ? `<div class="box">${secHead("Omissions", `What ${esc(d.name)} leaves out that a typical build includes. Active means builds must leave it out.`, omits)}<div style="height:6px"></div>${omitVis.map(rowHTML).join("")}${S.view === "all" ? `<div style="padding:10px 16px 4px"><button class="btn" data-addomit>+ Add an omission</button></div>` : ""}</div>` : ""}
     ${aboutHTML}</div><div class="detail"><div class="dcard">${detailHTML()}</div></div></div>`;
 }
 function detailHTML() {
@@ -418,7 +469,7 @@ function detailHTML() {
     new: `${d.name} does this, and a typical build doesn’t. Rubrick hasn’t seen it before.`, omission: `Most apps like ${d.name} include this. ${d.name} doesn’t.` };
   const v = i.verification || {}, r = i.result;
   const what = i.desc || i.evidence || "";  // what it is, under the title
-  const name = S.names[i.key] ?? i.name ?? "", desc = S.descs[i.key] ?? (i.evidence || i.desc || "");
+  const name = S.names[i.key] ?? i.name ?? "", desc = S.descs[i.key] ?? (i.what || i.evidence || i.desc || "");
   const run0 = d.runs[0];
   let actions = "";
   if (isNew && i.state === "off") actions = `<div class="panel"><label class="f">Name<input class="field" data-name="${esc(i.key)}" value="${esc(name)}"></label><label class="f">What it is<textarea class="field" rows="2" data-desc="${esc(i.key)}">${esc(desc)}</textarea></label><span style="font-size:12.5px;color:var(--mute);line-height:1.5">Rubrick learns this name for every product and writes its check from the description. Making it active applies only to ${esc(d.name)}.</span></div>
@@ -587,7 +638,8 @@ function renderPage() {
   $("#rail").innerHTML = rail();
   const m = $("#main");
   if (S.view === "learned") { m.innerHTML = learnedView(); return; }
-  if (!S.products.length) { m.innerHTML = `<header class="hd"><h1>Rubrick</h1><p>No product systems here yet (data folder: this directory, or $RUBRICK_HOME).</p></header><div class="empty">Add a product: point Rubrick at its source, and it compiles the product’s system — what it does and what it leaves out that a typical build wouldn’t. <div style="margin-top:16px"><button class="btn pri" data-add>Add a product →</button></div></div>${banners()}`; return; }
+  if (S.view === "setup") { m.innerHTML = setupView(); return; }
+  if (!S.products.length) { m.innerHTML = `<header class="hd"><h1>Rubrick</h1><p>No product systems here yet. Rubrick keeps its work in ${esc(S.setup?.home || "its data folder")} (change it in Settings).</p></header><div class="empty">Add a product: point Rubrick at its source, and it compiles the product’s system — what it does and what it leaves out that a typical build wouldn’t. <div style="margin-top:16px"><button class="btn pri" data-add>Add a product →</button></div></div>${banners()}`; return; }
   if (!S.d) { m.innerHTML = `<div class="empty">Loading…</div>`; return; }
   const head = bento();
   const body = S.view === "builder" ? builderView() : S.view === "runs" ? runsView() : systemView();
@@ -602,7 +654,7 @@ document.addEventListener("click", async (e) => {
     if (ds.tip !== undefined) { S.tip = S.tip === ds.tip ? null : ds.tip; return render(); }
     if (S.tip) S.tip = null;
     if (ds.prod) { S.cur = ds.prod; history.replaceState(null, "", "#" + encodeURIComponent(ds.prod)); S.sel = null; S.view = "needs"; S.flash = null; await loadDetail(); return render(); }
-    if (ds.view) { S.view = ds.view; if (ds.view === "learned") { S.learned = await api("/api/learned"); } else if (!S.d && S.cur) await loadDetail(); return render(); }
+    if (ds.view) { S.view = ds.view; if (ds.view === "learned") { S.learned = await api("/api/learned"); } else if (ds.view === "setup") { S.setup = await api("/api/setup"); S.keyMsg = null; } else if (!S.d && S.cur) await loadDetail(); return render(); }
     if (ds.sel) { S.sel = ds.sel; S.opened = ds.sel; return render(); }
     if (ds.redraw) return startDrawing(ds.redraw);
     if (ds.drawbento !== undefined) return startBento();
@@ -611,6 +663,27 @@ document.addEventListener("click", async (e) => {
     if (ds.about !== undefined) { S.aboutOpen = !S.aboutOpen; return render(); }
     if (ds.dismiss !== undefined) { S.flash = null; return render(); }
     if (ds.add !== undefined) return $("#addDlg").showModal();
+    if (ds.savekey !== undefined) {
+      e.preventDefault();
+      const key = $("#keyForm").elements.key.value.trim(); if (!key) return;
+      S.keyBusy = true; S.keyMsg = null; render();
+      try { const r = await api("/api/setup/key", { key }); S.setup = r; S.keyMsg = { kind: "ok", text: `Key checked and saved to ${r.saved_to}.` }; }
+      catch (err) { S.keyMsg = { kind: "err", text: err.message }; }
+      S.keyBusy = false; return render();
+    }
+    if (ds.pickhome !== undefined) {
+      const r = await api("/api/pick-folder", { prompt: "Choose where Rubrick keeps its work" });
+      if (r.path) $("#homeForm").elements.path.value = r.path; return;
+    }
+    if (ds.savehome !== undefined) {
+      const r = await api("/api/setup/home", { path: $("#homeForm").elements.path.value.trim() });
+      if (r.restarting) return waitForRestart();
+      S.setup = await api("/api/setup"); S.view = "needs"; await loadProducts(); await loadDetail(); return render();
+    }
+    if (ds.setupfilm !== undefined) {
+      S.filmJob = {}; return sideJob(S.filmJob, api("/api/setup/filming", {}), async () => { S.setup = await api("/api/setup"); });
+    }
+    if (ds.addomit !== undefined) { $("#omitForm").reset(); return $("#omitDlg").showModal(); }
     if (ds.check !== undefined) return $("#checkDlg").showModal();
     if (ds.recompile !== undefined) return runJob(api(`/api/products/${encodeURIComponent(S.cur)}/recompile`, {}), "Recompiling…", () => { S.flash = { kind: "ok", text: `Recompiled. ${S.cur}’s system, what builders read, and every check now reflect your switches.` }; render(); });
     const post = (action, body) => api(`/api/products/${encodeURIComponent(S.cur)}/${action}`, body);
@@ -660,6 +733,21 @@ $("#addDlg").addEventListener("close", () => {
   if ($("#addDlg").returnValue !== "ok") return;
   const f = Object.fromEntries(new FormData($("#addForm")));
   runJob(api("/api/products", f), `Compiling ${f.name}…`, () => { S.cur = f.name; S.view = "needs"; refresh(); });
+});
+// setup forms never submit the page: Enter in the key field checks and saves it
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "keyForm") { e.preventDefault(); $("[data-savekey]")?.click(); }
+  if (e.target.id === "homeForm") e.preventDefault();
+});
+$("#omitDlg").addEventListener("close", () => {
+  if ($("#omitDlg").returnValue !== "ok") return;
+  const f = Object.fromEntries(new FormData($("#omitForm")));
+  runJob(api(`/api/products/${encodeURIComponent(S.cur)}/omission`, f), "Adding the omission…", (res) => {
+    S.sel = res.key; S.opened = null;
+    const gated = /ACTIVE/.test(res.detector || "");
+    S.flash = { kind: gated ? "ok" : "warn", text: gated ? `Added “${f.label}”. Rubrick wrote a check for it, so a build that adds it back fails.` : `Added “${f.label}”. Builders are told to leave it out, but Rubrick couldn’t write a reliable check for it yet, so it isn’t checked.` };
+    render();
+  });
 });
 $("#checkDlg").addEventListener("close", () => {
   if ($("#checkDlg").returnValue !== "ok") return;

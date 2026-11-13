@@ -162,7 +162,8 @@ def _describe(key: str, m: dict, review: dict) -> dict:
         else:
             mod, _, name = rest.partition(":")
         p = pend.get((mod, name), {})
-        return {"label": _humanize(name), "desc": p.get("instead") and f"Instead: {p['instead']}" or p.get("evidence", ""),
+        return {"label": _humanize(name),
+                "desc": p.get("what") or (p.get("instead") and f"Instead: {p['instead']}") or p.get("evidence", ""),
                 "evidence": p.get("evidence", ""), "instead": p.get("instead", ""), "against": p.get("against", ""),
                 "confidence": p.get("confidence", ""), "exemplars": p.get("exemplars", []),
                 "host": p.get("host", ""), "name": name, "modality": mod,
@@ -205,12 +206,17 @@ def detail(name: str) -> dict:
     runs = load_runs(name)
     latest = runs[0] if runs else None
     items = []
+    declared = learned.declared_omissions(name)
     for c in _live(name, m.get("catalog", [])):
         d = _describe(c["key"], m, review)
         # no review file (or no entry in it): the catalog entry's own description stands
         d = {k: v for k, v in d.items() if v not in ("", [], None) or k not in c}
-        if c["key"].startswith("new:") and not d.get("desc"):
-            d["desc"] = c.get("evidence", "")
+        dec = declared.get(c["key"].partition(":")[2]) if c["key"].startswith("absence:") else None
+        if dec:  # an omission the designer declared reads in their own words
+            d.update(label=dec.get("label") or d.get("label"), desc=dec.get("description") or d.get("desc", ""))
+            d["declared"] = True
+        if c["key"].startswith("new:") and (not d.get("desc") or (c.get("what") and d["desc"] == d.get("evidence"))):
+            d["desc"] = c.get("what") or (c.get("instead") and f"Instead: {c['instead']}") or c.get("evidence", "")
         votes = re.match(r"(\d+)/(\d+) generic twin", c.get("why", "") or "")
         items.append({**c, **d, "needs": _needs_look(c), "verification": verification(c["key"]),
                       "votes": [int(votes.group(1)), int(votes.group(2))] if votes else None,
@@ -323,7 +329,7 @@ def _job(kind: str, fn, tag: str = "") -> str:
     return jid
 
 
-def _compile(name: str, log=None) -> dict:
+def _compile(name: str, log=None, draw: bool = True) -> dict:
     from rubrick.orchestrate import compile_product_system
     from rubrick.product_system import save_product_system
     from rubrick.review import emit_review
@@ -336,7 +342,32 @@ def _compile(name: str, log=None) -> dict:
         emit_review(ps, name, str(_review_path(name)), t["repo"], t["globals_css"], t["components_dir"])
     # then draw the system — the header's stills and every item's comparison — as its own
     # background job, so the compile finishes and the page stays usable while it draws
-    return {"log": getattr(ps, "_log", [])[-40:], "draw_job": start_drawing_system(name)}
+    return {"log": getattr(ps, "_log", [])[-40:], **({"draw_job": start_drawing_system(name)} if draw else {})}
+
+
+def _add_omission(name: str, label: str, description: str, log) -> dict:
+    """An omission the designer declares for this product. Its name joins Rubrick's vocabulary
+    and Rubrick tries to write a check for it (the same path a promoted omission takes); it's
+    on for this product whatever the generic twins do. Recompiles so it's in the system now —
+    without redrawing the rest (its comparison is drawn when it's opened)."""
+    import tempfile
+    from rubrick.review import apply_review
+    slug = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")[:48]
+    if not slug:
+        raise RuntimeError("give the omission a name")
+    learned.record_declared_omission(name, slug, label.strip(), description.strip())
+    log("Writing a check for it…")
+    data = {"system": name, "calibration_target": _target(name) or {},
+            "pending_promotions": [{"name": slug, "modality": "absence", "decision": "promote", "as": slug,
+                                    "evidence": f"Declared by the designer: {description or label}",
+                                    "description": description.strip() or label.strip()}]}
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+        json.dump(data, f)
+    with _LOCK:
+        res = apply_review(f.name)
+    log("Recompiling…")
+    _compile(name, draw=False)
+    return {"key": f"absence:{slug}", "detector": next(iter(res.get("detectors", [])), "")}
 
 
 DRAW_WORKERS = 3                     # drawings at once (each also films two scenes in Chrome)
@@ -537,6 +568,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._scene(path)
             if path == "/api/products":
                 return self._send(200, products())
+            if path == "/api/setup":
+                return self._send(200, setup_status())
             if path.startswith("/api/products/") and path.endswith("/font"):
                 from urllib.parse import parse_qs
                 from rubrick.specimen import font_file
@@ -576,6 +609,35 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "a name and an existing repo folder are required"})
                 _save_target(name, repo, *_layout(repo, b))
                 return self._send(200, {"job": _job("compile", lambda log: _compile(name, log)), "name": name})
+            if path == "/api/setup/key":
+                from rubrick.baseline import check_key, save_key
+                key = (b.get("key") or "").strip()
+                if not key.startswith("sk-ant-"):
+                    return self._send(400, {"error": "That doesn’t look like an Anthropic API key (they start with sk-ant-)."})
+                if why := check_key(key):
+                    return self._send(400, {"error": why})
+                return self._send(200, {"saved_to": save_key(key), **setup_status()})
+            if path == "/api/setup/home":
+                import os
+                if os.environ.get("RUBRICK_HOME"):
+                    return self._send(400, {"error": "RUBRICK_HOME is set where Rubrick was started, and it decides the data folder. Unset it to choose one here."})
+                folder = pathlib.Path(b.get("path") or "").expanduser()
+                if not str(folder).strip() or not folder.is_absolute():
+                    return self._send(400, {"error": "choose a folder"})
+                folder.mkdir(parents=True, exist_ok=True)
+                changed = folder.resolve() != paths.home().resolve()
+                paths.save_config(home=str(folder))
+                if changed:
+                    _restart()
+                return self._send(200, {"restarting": changed, "home": str(folder)})
+            if path == "/api/setup/filming":
+                from rubrick.scenes import ensure_filming
+
+                def setup_filming(log):
+                    if why := ensure_filming(log):
+                        raise RuntimeError(why)
+                    return {"ready": True}
+                return self._send(200, {"job": _job("filming", setup_filming, tag="filming")})
             if path == "/api/pick-folder":  # the OS folder picker; blocks until chosen
                 folder = pick_folder(b.get("prompt") or "Choose the product's folder")
                 return self._send(200, {"path": folder})
@@ -624,6 +686,9 @@ class Handler(BaseHTTPRequestHandler):
                         name, b["key"], b.get("name", ""), b.get("description", "")))})
                 if action == "draw":  # stills + every missing or outdated comparison
                     return self._send(200, {"job": start_drawing_system(name, bento=bool(b.get("bento", True)))})
+                if action == "omission":
+                    label, desc = b.get("label", ""), b.get("description", "")
+                    return self._send(200, {"job": _job("omission", lambda log: _add_omission(name, label, desc, log))})
                 if action == "bento":
                     return self._send(200, {"job": _job("bento", lambda log: _bento(name, log), tag=f"bento:{name}")})
                 if action == "drawing":
@@ -646,7 +711,40 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, {"error": f"{type(e).__name__}: {e}"})
 
 
+# ---- setup: the data folder and the API key ----------------------------------------------
+
+_PORT = 7317
+
+
+def setup_status() -> dict:
+    """What the first-run screen and Settings show. Never includes the key itself."""
+    from rubrick.baseline import key_source
+    from rubrick.scenes import _film_ready, rehearsal_available
+    src = paths.home_source()
+    key_from = key_source()
+    return {"home": str(paths.home()), "home_source": src,
+            "suggested_home": str(paths.home() if src != "default" else paths.DEFAULT_HOME),
+            "has_key": bool(key_from), "key_source": key_from,
+            # first run: no key yet, or the data folder was never chosen (env and setup both pin it)
+            "needs_setup": not key_from or src in ("folder", "default"),
+            "filming": rehearsal_available(), "filming_ready": _film_ready()}
+
+
+def _restart() -> None:
+    """Start over in a fresh process — module-level paths resolve the data folder at import,
+    so a new folder needs a new process. The page waits and reconnects."""
+    import os
+    import sys
+
+    def go():
+        time.sleep(0.4)
+        os.execv(sys.executable, [sys.executable, "-m", "rubrick.cli", "ui", "--port", str(_PORT), "--no-browser"])
+    threading.Thread(target=go, daemon=True).start()
+
+
 def serve(port: int = 7317, open_browser: bool = True) -> None:
+    global _PORT
+    _PORT = port
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://localhost:{port}/"
     print(f"Rubrick is running at {url}  (data: {paths.home()})  — Ctrl+C to stop")

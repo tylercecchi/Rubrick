@@ -670,6 +670,84 @@ def _draw_system_ok() -> bool:
             os.environ["RUBRICK_HOME"] = old_home
 
 
+def _declared_omission_ok() -> bool:
+    """An omission the designer declares joins that product's system whatever the twins do:
+    on, set by the designer, told to builders, and never gated blind while it has no admitted
+    check. Other products don't get it. No model calls (no twins; no detector synthesis)."""
+    import os
+    import pathlib as _pl
+    import tempfile
+    from rubrick import learned
+    from rubrick.absences import observe_absences
+    from rubrick.product_system import ProductSystem
+    from rubrick.subtractions import check_subtractions
+    tmp = _pl.Path(tempfile.mkdtemp())
+    old_home, old_f = os.environ.get("RUBRICK_HOME"), learned._F
+    os.environ["RUBRICK_HOME"] = str(tmp)
+    learned._F = tmp / "learned.json"
+    try:
+        learned.record_declared_omission("Restrained", "toast-notifications", "Toast notifications",
+                                         "status changes show inline, never as a popup")
+        repo = str(_FIX / "rubrick-restrained")
+        ab = observe_absences(repo, "src/app/globals.css", "src/components", designed=True,
+                              baseline={"twins": [], "log": []}, product="Restrained")
+        other = observe_absences(repo, "src/app/globals.css", "src/components", designed=True,
+                                 baseline={"twins": [], "log": []}, product="Generic")
+        c = next((x for x in ab["catalog"] if x["key"] == "absence:toast-notifications"), None)
+        rec = next((r for r in ab["subtractions"] if r["omits"] == "toast-notifications"), None)
+        told = any("toast" in line.lower() for line in ProductSystem(dispositions={}, subtractions=[rec])._checklist()) if rec else False
+        return (c is not None and c["state"] == "on" and c["set_by"] == "you" and c.get("declared")
+                and rec is not None and rec["detector"] is None and told
+                and check_subtractions([rec], repo, "src/app/globals.css", "src/components") == []
+                and not any(x["key"] == "absence:toast-notifications" for x in other["catalog"]))
+    finally:
+        learned._F = old_f
+        if old_home is None:
+            os.environ.pop("RUBRICK_HOME", None)
+        else:
+            os.environ["RUBRICK_HOME"] = old_home
+
+
+def _setup_ok() -> bool:
+    """First-run setup: the data folder is chosen in order (RUBRICK_HOME > the folder saved in
+    setup > a folder already holding Rubrick data > ~/Rubrick), a saved folder sticks no matter
+    where Rubrick starts, the key never reaches the page, and filming works from the packaged
+    Stageshow (no repo checkout needed). No model calls, no keychain writes."""
+    import json as _j
+    import os
+    import pathlib as _pl
+    import tempfile
+    from rubrick import paths, scenes
+    from rubrick.ui import server
+    tmp = _pl.Path(tempfile.mkdtemp())
+    saved = {k: os.environ.get(k) for k in ("RUBRICK_HOME", "RUBRICK_CONFIG_DIR", "ANTHROPIC_API_KEY")}
+    cwd = os.getcwd()
+    try:
+        os.environ.pop("RUBRICK_HOME", None)
+        os.environ["RUBRICK_CONFIG_DIR"] = str(tmp / "cfg")
+        os.environ["ANTHROPIC_API_KEY"] = "sk-ant-eval-secret-never-shown"
+        (tmp / "empty").mkdir(); (tmp / "withdata" / "systems").mkdir(parents=True)
+        (tmp / "withdata" / "systems" / "X.json").write_text("{}")
+        os.chdir(tmp / "empty"); default = paths.home_source()
+        os.chdir(tmp / "withdata"); folder = (paths.home_source(), paths.home().resolve() == (tmp / "withdata").resolve())
+        paths.save_config(home=str(tmp / "chosen"))
+        os.chdir(tmp / "empty"); chosen = (paths.home_source(), paths.home().resolve() == (tmp / "chosen").resolve())
+        os.environ["RUBRICK_HOME"] = str(tmp / "pinned"); env = paths.home_source()
+        status = _j.dumps(server.setup_status())
+        film_src = (scenes.STAGESHOW / "scripts" / "film.mjs").exists() and \
+            str(scenes.STAGESHOW).startswith(str(_pl.Path(scenes.__file__).parent))
+        return (default == "default" and folder == ("folder", True) and chosen == ("config", True)
+                and env == "env" and "sk-ant-eval-secret" not in status
+                and '"has_key": true' in status and film_src)
+    finally:
+        os.chdir(cwd)
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def run() -> bool:
     systems = {n: ensure_system(n) for n in PRODUCTS}
     ok = True
@@ -773,6 +851,10 @@ def run() -> bool:
           _scenes_ok())
     check("drawing a system: every item drawn after compile, queue visible, unchanged items not redrawn",
           _draw_system_ok())
+    check("declared omissions: on for that product only, told to builders, never gated blind",
+          _declared_omission_ok())
+    check("setup: data folder order, a chosen folder sticks, the key never reaches the page, packaged film tools",
+          _setup_ok())
 
     print(f"\n=== {'ALL PASS ✓' if ok else 'FAILURES ✗'} ===")
     return ok

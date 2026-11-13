@@ -208,6 +208,7 @@ it over the Model Context Protocol.
 
 ```bash
 pip install git+https://github.com/tylercecchi/rubrick.git
+rubrick ui        # the first run asks where to keep your work and for your Anthropic key
 ```
 
 **To develop it** — clone and install editable (source stays linked, so edits take effect live):
@@ -219,9 +220,10 @@ python3 -m venv .venv
 ./.venv/bin/pip install -e .        # installs deps + the `rubrick-mcp` launcher
 ```
 
-Either way you get the `rubrick-mcp` command. Set your Anthropic key via any of: the
-`ANTHROPIC_API_KEY` env var, a `RUBRICK_ENV_FILE` path, or a project `.env.local` / `.env`
-(see `.env.example`).
+Either way you get the `rubrick` and `rubrick-mcp` commands. Set your Anthropic key in the
+app's first-run setup (it's checked, then kept in the system keychain), or via any of: the
+`ANTHROPIC_API_KEY` env var, a `RUBRICK_ENV_FILE` path, or a `.env.local` / `.env` in the data
+folder (see `.env.example`). An environment variable always wins.
 
 ### 2. Register the MCP server with a client
 
@@ -241,9 +243,11 @@ Point your MCP client (Claude Code / Desktop) at the `rubrick-mcp` command:
 }
 ```
 
-**`RUBRICK_HOME`** is Rubrick's data root — where `systems/`, `learned.json`, and `.cache/` live.
-It defaults to the current working directory, but the MCP server's cwd is client-controlled, so
-set it explicitly to the directory that holds your compiled systems. Tools exposed:
+**The data folder** is where `systems/`, `learned.json`, `.cache/`, drawings and check runs live.
+In order: `RUBRICK_HOME` if set; else the folder chosen in the app's setup (saved in
+`~/.rubrick/config.json`); else the current folder if it already holds Rubrick data; else
+`~/Rubrick`. Once you've chosen a folder in the app, the MCP server finds it too, wherever the
+client starts it; `RUBRICK_HOME` still overrides. Tools exposed:
 `list_product_systems`, `get_product_system`, `check_conformance`, `compile_product_system`,
 `apply_review`, `list_learned`.
 _After any code change, restart the server — it's a stdio subprocess that caches modules._
@@ -301,7 +305,7 @@ violations until conformant.
 ### 5. Review and toggle it (the local app)
 
 ```bash
-rubrick ui            # opens http://localhost:7317 — data from $RUBRICK_HOME or this folder
+rubrick ui            # opens http://localhost:7317 (first run: choose the data folder, add a key)
 ```
 
 A product system is **toggled, not edited**. Every addition (what the product does that a
@@ -322,14 +326,15 @@ except the model calls a compile already makes.
 
 **Faux UI.** The header's lead tiles and each item's "this product vs a typical build"
 drawing are animated faux UI drawn with [Stageshow](https://github.com/benjitaylor/skills/tree/main/stageshow)
-(MIT, vendored under `stage/` — see `stage/VENDORED.md`). Claude writes each scene against
+(MIT, vendored in the package at `src/rubrick/stageshow/` — see its `VENDORED.md`). Claude writes each scene against
 the kit from the product's real source and compiled system, in the product's measured look;
 Rubrick then films it with Stageshow's own `film.mjs --gate` in headless Chrome and sends the
 gate's faults and a contact sheet back for up to two fixes. After each compile from the app,
 a background job draws the header's stills and every item's comparison (three at a time) while
 the page stays usable; recompiles redraw only items whose evidence changed. An item opened
 before its drawing exists is drawn on the spot. Scenes run in sandboxed frames that can't reach the network.
-Rehearsal needs Node and Chrome: `cd stage && npm install`. Without them scenes are still drawn,
+Rehearsal needs Node and Chrome; the first time Rubrick films, it sets up its own filming folder
+(`~/.rubrick/film`, about 10 seconds). Without Node or Chrome scenes are still drawn,
 marked "Not rehearsed".
 
 ## Development
