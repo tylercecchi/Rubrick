@@ -58,3 +58,6 @@ systems/targets.json
 stage/node_modules/
 scenes/
 systems/*.review.json
+# the eval's data folder: generated per compile, never tracked
+tests/home/systems/*.review.json
+tests/home/systems/targets.json

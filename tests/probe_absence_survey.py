@@ -17,6 +17,11 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+# probes run on the eval's data folder (fixtures + caches), never the person's own
+import os  # noqa: E402
+os.environ.setdefault("RUBRICK_HOME", str(ROOT / "tests" / "home"))
+if (ROOT / ".env.local").exists():
+    os.environ.setdefault("RUBRICK_ENV_FILE", str(ROOT / ".env.local"))
 
 
 def _matches(entry: dict, finding: dict) -> bool:
