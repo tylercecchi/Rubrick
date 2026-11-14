@@ -341,7 +341,15 @@ marked "Not rehearsed".
 
 The regression guard is **`eval_harness.py`** in the repo root — fully self-contained (it observes
 the vendored `tests/fixtures/` products and depends on nothing external). It's not part of the
-shipped package. LLM calls cache under `.cache/` (gitignored).
+shipped package. It runs on its own data folder, **`tests/home/`**: the three fixture systems
+(Beacon, Restrained, Generic), a clean `learned.json`, and the model-call `.cache/` (gitignored).
+So the eval never reads or writes your working data, and nothing you click in the app changes
+what it tests. The probes in `tests/` use the same folder. Your key comes from the repo's
+`.env.local` when present.
+
+The repo itself is not a data folder: run `rubrick ui` from anywhere and it uses your own
+(`~/Rubrick` by default). To explore with the fixtures in the app, add them as products from
+`tests/fixtures/` (each is a small app folder).
 
 ```bash
 ./.venv/bin/python eval_harness.py    # the regression guard (self-contained)

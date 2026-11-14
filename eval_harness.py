@@ -17,13 +17,22 @@ above generic on its own system; restrained yields a non-empty system; generic s
 
 from __future__ import annotations
 
+import os
 import pathlib
 
-from rubrick.conform import check_conformance
-from rubrick.orchestrate import compile_product_system
-from rubrick.product_system import load_product_system, save_product_system
+# The eval runs on its own data folder — the fixture systems, a clean learned store, and the
+# model-call caches — never on the person's working data (their switches and drawings live in
+# their own data folder). Set before any rubrick import: modules fix their paths at import.
+_HERE = pathlib.Path(__file__).parent
+os.environ.setdefault("RUBRICK_HOME", str(_HERE / "tests" / "home"))
+if (_HERE / ".env.local").exists():  # the developer's key, for any call the caches don't cover
+    os.environ.setdefault("RUBRICK_ENV_FILE", str(_HERE / ".env.local"))
 
-_SYS = pathlib.Path(__file__).parent / "systems"
+from rubrick.conform import check_conformance  # noqa: E402
+from rubrick.orchestrate import compile_product_system  # noqa: E402
+from rubrick.product_system import load_product_system, save_product_system  # noqa: E402
+
+_SYS = _HERE / "tests" / "home" / "systems"
 _FIX = pathlib.Path(__file__).parent / "tests" / "fixtures"  # vendored fixtures
 _COMPS = "src/components"
 
