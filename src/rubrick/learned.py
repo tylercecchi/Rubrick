@@ -200,6 +200,28 @@ def declared_omissions(product: str) -> dict:
     return load().get("declared_omissions", {}).get(product, {})
 
 
+def record_declared_check(product: str, name: str, detector: str) -> None:
+    """The outcome of writing a check for a declared omission (done once, on the recompile
+    after it was added): the detector summary, or "" when no reliable check was admitted."""
+    d = load()
+    dec = d.get("declared_omissions", {}).get(product, {}).get(name)
+    if dec is not None:
+        dec["check"] = {"detector": detector, "at": _now()}
+        save(d)
+
+
+def forget_declared_omission(product: str, name: str) -> bool:
+    """Take back a declared omission (the app only offers it before it's compiled in)."""
+    d = load()
+    dec = d.get("declared_omissions", {}).get(product, {})
+    if name not in dec:
+        return False
+    del dec[name]
+    d.get("switches", {}).get(product, {}).pop(f"absence:{name}", None)
+    save(d)
+    return True
+
+
 def record_promoted_absence(name: str, description: str) -> None:
     d = load()
     d["promoted_absences"][name] = description
