@@ -717,6 +717,54 @@ def _declared_omission_ok() -> bool:
             os.environ["RUBRICK_HOME"] = old_home
 
 
+def _omission_waits_ok() -> bool:
+    """Adding an omission in the app costs nothing and changes nothing yet: it's saved, shows
+    as waiting (not in the system, not counted, no switch), can be taken back, and the product
+    shows changes waiting. Its check is written on the recompile, once — a second recompile
+    never writes it again, and an omission that already has a check never gets another."""
+    import os
+    import pathlib as _pl
+    import tempfile
+    import anthropic.resources.messages as _M
+    from rubrick import learned
+    from rubrick.ui import server
+    tmp = _pl.Path(tempfile.mkdtemp())
+    old_home, old_f = os.environ.get("RUBRICK_HOME"), learned._F
+    os.environ["RUBRICK_HOME"] = str(tmp)
+    learned._F = tmp / "learned.json"
+    calls = []
+    real_parse, real_create = _M.Messages.parse, _M.Messages.create
+    _M.Messages.parse = _M.Messages.create = lambda *a, **k: calls.append(1) or (_ for _ in ()).throw(RuntimeError("no calls"))
+    import rubrick.review as _rv
+    real_apply = _rv.apply_review
+    applied = []
+    _rv.apply_review = lambda path: applied.append(path) or {"detectors": ["carousels: ACTIVE (stub)"]}
+    try:
+        (tmp / "systems").mkdir()
+        (tmp / "systems" / "P.json").write_text('{"catalog": []}')
+        import time as _t
+        _t.sleep(0.01)
+        r = server._add_omission("P", "Carousels", "one item at a time, never a slider")
+        d = server.detail("P")
+        it = next((i for i in d["items"] if i["key"] == r["key"]), None)
+        waits = bool(it and it.get("waiting") and it["section"] == "omit" and d["pending"])
+        server._add_omission("P", "Toasts", "")
+        gone = learned.forget_declared_omission("P", "toasts") and \
+            not any(i["key"] == "absence:toasts" for i in server.detail("P")["items"])
+        first = server._write_pending_checks("P", lambda _s: None)
+        again = server._write_pending_checks("P", lambda _s: None)
+        return (waits and gone and not calls and len(applied) == 1 and first and first[0]["gated"]
+                and again == [] and "check" in learned.declared_omissions("P")["carousels"])
+    finally:
+        _M.Messages.parse, _M.Messages.create = real_parse, real_create
+        _rv.apply_review = real_apply
+        learned._F = old_f
+        if old_home is None:
+            os.environ.pop("RUBRICK_HOME", None)
+        else:
+            os.environ["RUBRICK_HOME"] = old_home
+
+
 def _setup_ok() -> bool:
     """First-run setup: the data folder is chosen in order (RUBRICK_HOME > the folder saved in
     setup > a folder already holding Rubrick data > ~/Rubrick), a saved folder sticks no matter
@@ -862,6 +910,8 @@ def run() -> bool:
           _draw_system_ok())
     check("declared omissions: on for that product only, told to builders, never gated blind",
           _declared_omission_ok())
+    check("adding an omission: saved and shown waiting, no model calls; its check is written once, on the recompile",
+          _omission_waits_ok())
     check("setup: data folder order, a chosen folder sticks, the key never reaches the page, packaged film tools",
           _setup_ok())
 

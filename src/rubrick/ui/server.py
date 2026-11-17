@@ -221,6 +221,13 @@ def detail(name: str) -> dict:
         items.append({**c, **d, "needs": _needs_look(c), "verification": verification(c["key"]),
                       "votes": [int(votes.group(1)), int(votes.group(2))] if votes else None,
                       "result": item_result(latest, c["key"]) if latest else None})
+    have = {i["key"] for i in items}
+    for slug, dec in declared.items():  # added since the last compile: waiting, not in the system
+        if f"absence:{slug}" not in have:
+            items.append({"key": f"absence:{slug}", "section": "omit", "default": "on", "state": "on",
+                          "set_by": "you", "label": dec.get("label") or slug, "desc": dec.get("description", ""),
+                          "kind": "omission", "declared": True, "waiting": True, "needs": False,
+                          "verification": None, "votes": None, "result": None})
     by_facet = {s["because"]: s for s in m.get("styles", [])}
     principles = []
     for p in m.get("principles", []):
@@ -336,38 +343,71 @@ def _compile(name: str, log=None, draw: bool = True) -> dict:
     t = _target(name)
     if not t:
         raise RuntimeError(f"no source repo recorded for {name!r} — add it with its repo path first")
+    log = log or (lambda _s: None)
     with _LOCK:  # one compile at a time: the learned store and caches are shared files
+        checks = _write_pending_checks(name, log)
+        log("Recompiling…")
         ps = compile_product_system(t["repo"], t["globals_css"], t["components_dir"], [], name)
         save_product_system(ps, str(_manifest_path(name)))
         emit_review(ps, name, str(_review_path(name)), t["repo"], t["globals_css"], t["components_dir"])
     # then draw the system — the header's stills and every item's comparison — as its own
     # background job, so the compile finishes and the page stays usable while it draws
-    return {"log": getattr(ps, "_log", [])[-40:], **({"draw_job": start_drawing_system(name)} if draw else {})}
+    return {"log": getattr(ps, "_log", [])[-40:], "checks": checks,
+            **({"draw_job": start_drawing_system(name)} if draw else {})}
 
 
-def _add_omission(name: str, label: str, description: str, log) -> dict:
-    """An omission the designer declares for this product. Its name joins Rubrick's vocabulary
-    and Rubrick tries to write a check for it (the same path a promoted omission takes); it's
-    on for this product whatever the generic twins do. Recompiles so it's in the system now —
-    without redrawing the rest (its comparison is drawn when it's opened)."""
-    import tempfile
-    from rubrick.review import apply_review
+def _add_omission(name: str, label: str, description: str) -> dict:
+    """An omission the designer declares for this product. Saved at once and nothing else:
+    it joins the system — and Rubrick writes its check — on the next recompile, which the
+    designer starts. Several edits can wait for the same recompile."""
     slug = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")[:48]
     if not slug:
         raise RuntimeError("give the omission a name")
     learned.record_declared_omission(name, slug, label.strip(), description.strip())
-    log("Writing a check for it…")
-    data = {"system": name, "calibration_target": _target(name) or {},
-            "pending_promotions": [{"name": slug, "modality": "absence", "decision": "promote", "as": slug,
-                                    "evidence": f"Declared by the designer: {description or label}",
-                                    "description": description.strip() or label.strip()}]}
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-        json.dump(data, f)
-    with _LOCK:
-        res = apply_review(f.name)
-    log("Recompiling…")
-    _compile(name, draw=False)
-    return {"key": f"absence:{slug}", "detector": next(iter(res.get("detectors", [])), "")}
+    return {"key": f"absence:{slug}"}
+
+
+def _compiled_keys(name: str) -> set:
+    try:
+        return {c["key"] for c in json.loads(_manifest_path(name).read_text()).get("catalog", [])}
+    except Exception:
+        return set()
+
+
+def _write_pending_checks(name: str, log) -> list:
+    """Declared omissions that don't have a check attempt yet get one now: the name joins
+    Rubrick's vocabulary and it tries to write a detector (the path a promoted omission
+    takes). One attempt per omission — a recompile never repeats it. Call under _LOCK."""
+    import tempfile
+    from rubrick.review import apply_review
+    from rubrick.subtractions import registry
+    t = _target(name) or {}
+    reg = registry()
+    todo = {}
+    for slug, dec in learned.declared_omissions(name).items():
+        if "check" in dec:
+            continue
+        if slug in reg:  # it already has a detector (declared before checks were deferred)
+            learned.record_declared_check(name, slug, f"{slug}: ACTIVE (existing check)")
+            continue
+        todo[slug] = dec
+    out = []
+    for n, (slug, dec) in enumerate(todo.items(), 1):
+        label, desc = dec.get("label") or slug, dec.get("description", "")
+        log(f"Writing a check for “{label}”" + (f" ({n} of {len(todo)})…" if len(todo) > 1 else "…"))
+        data = {"system": name, "calibration_target": t,
+                "pending_promotions": [{"name": slug, "modality": "absence", "decision": "promote", "as": slug,
+                                        "evidence": f"Declared by the designer: {desc or label}",
+                                        "description": desc or label}]}
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+            json.dump(data, f)
+        try:
+            det = next(iter(apply_review(f.name).get("detectors", [])), "")
+        except Exception as e:
+            det = f"{slug}: no check ({type(e).__name__})"
+        learned.record_declared_check(name, slug, det)
+        out.append({"key": f"absence:{slug}", "label": label, "gated": "ACTIVE" in det})
+    return out
 
 
 DRAW_WORKERS = 3                     # drawings at once (each also films two scenes in Chrome)
@@ -687,8 +727,12 @@ class Handler(BaseHTTPRequestHandler):
                 if action == "draw":  # stills + every missing or outdated comparison
                     return self._send(200, {"job": start_drawing_system(name, bento=bool(b.get("bento", True)))})
                 if action == "omission":
-                    label, desc = b.get("label", ""), b.get("description", "")
-                    return self._send(200, {"job": _job("omission", lambda log: _add_omission(name, label, desc, log))})
+                    return self._send(200, _add_omission(name, b.get("label", ""), b.get("description", "")))
+                if action == "omission-remove":
+                    slug = b.get("key", "").partition(":")[2]
+                    if b.get("key", "") in _compiled_keys(name) or not learned.forget_declared_omission(name, slug):
+                        return self._send(400, {"error": "only an omission that isn’t compiled in yet can be removed — switch it off instead"})
+                    return self._send(200, {"ok": True})
                 if action == "bento":
                     return self._send(200, {"job": _job("bento", lambda log: _bento(name, log), tag=f"bento:{name}")})
                 if action == "drawing":

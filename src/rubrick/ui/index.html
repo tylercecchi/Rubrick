@@ -115,6 +115,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:50
 .drawing{display:flex;flex-direction:column;gap:8px}
 .drawing .lbl{font-size:12.5px;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
 .drawing .slot{display:block;width:100%;aspect-ratio:320/180;border-radius:12px;background:#f3f3f3}
+.row.waiting .rname,.row.waiting .rdesc{opacity:.55}
 .drawing .pending{aspect-ratio:320/180;border-radius:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-size:13px;color:var(--mute)}
 .prog{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink3);vertical-align:middle}
 .prog .track{position:relative;width:140px;height:6px;border-radius:999px;background:#d6d6d6;overflow:hidden}
@@ -147,7 +148,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:50
 <div id="frames" aria-hidden="false"></div>
 <dialog id="omitDlg"><form method="dialog" id="omitForm">
   <h3 style="margin:0;font-size:20px;font-weight:500">Add an omission</h3>
-  <p class="p" id="omitLead">Something this product deliberately leaves out. Builders will be told to leave it out too, and Rubrick tries to write a check that catches a build adding it back.</p>
+  <p class="p" id="omitLead">Something this product deliberately leaves out. It joins the system when you next recompile: builders are told to leave it out, and Rubrick tries to write a check that catches a build adding it back. Nothing runs until then, so you can add several first.</p>
   <label class="f">What it leaves out<input class="field" name="label" required placeholder="Toast notifications" autocomplete="off"></label>
   <label class="f">What it does instead, or why<textarea class="field" name="description" rows="3" placeholder="Status changes show inline, on the thing that changed — never as a popup in the corner."></textarea></label>
   <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn pri" value="ok">Add omission →</button></div>
@@ -260,7 +261,7 @@ function startBento() {
 function maybeDraw() {  // drawings are made the first time an item is opened, then cached
   // only for an item the person opened — the default selection on page load doesn't count
   if (!S.d || !S.sel || S.sel !== S.opened || S.sel.startsWith("p:") || !["needs", "all"].includes(S.view)) return;
-  if (S.d.drawings?.[S.sel] || queued(S.sel)) return;
+  if (S.d.drawings?.[S.sel] || queued(S.sel) || S.d.items.find((x) => x.key === S.sel)?.waiting) return;
   const slot = S.draws[S.cur + "|" + S.sel];
   if (slot && (slot.job || slot.tried)) return;
   startDrawing(S.sel);
@@ -325,7 +326,7 @@ async function runJob(promise, label, after) {
     for (;;) {
       await new Promise((r) => setTimeout(r, 1200));
       const j = await api("/api/jobs/" + job);
-      S.jobText = label + " " + Math.round((Date.now() - t0) / 1000) + "s";
+      S.jobText = (j.status || label) + " " + Math.round((Date.now() - t0) / 1000) + "s";
       if (j.state === "done") { S.job = null; await refresh(); if (after) after(j.result); return; }
       if (j.state === "error") { S.job = null; S.flash = { kind: "err", text: label + " failed: " + j.error }; render(); return; }
       render();
@@ -336,7 +337,7 @@ async function runJob(promise, label, after) {
 // ---------------------------------------------------------------- derived
 function itemsIn(section) { return (S.d?.items || []).filter((i) => i.section === section); }
 function visible(i) { return S.view === "all" || (S.view === "needs" && i.needs); }
-function groupState(items) { const n = items.filter((i) => i.state === "on").length; return { n, total: items.length, st: n === 0 ? "off" : n === items.length ? "on" : "mixed" }; }
+function groupState(items) { items = items.filter((i) => !i.waiting); const n = items.filter((i) => i.state === "on").length; return { n, total: items.length, st: n === 0 ? "off" : n === items.length ? "on" : "mixed" }; }
 function needsCount() { return (S.d?.items || []).filter((i) => i.needs).length + (S.d?.jobs || []).filter((j) => j.original !== j.need && !j.override).length; }
 
 // ---------------------------------------------------------------- rendering
@@ -351,6 +352,10 @@ function rowHTML(i) {
     { high: "The product does something else instead, and nothing suggests the gap is unfinished.", medium: "There’s a substitute, but also a sign it might be unfinished.", low: "No substitute, and signs the gap is accidental — like a style defined but never used." }[i.confidence] || "") : "";
   const votes = i.votes ? `<span title="${i.votes[0]} of ${i.votes[1]} typical builds have this">${Array.from({ length: i.votes[1] }, (_, x) => `<span class="dot ${x < i.votes[0] ? "y" : "n"}"></span>`).join(" ")}</span>` : "";
   const res = i.result ? `<span class="res ${i.result.result === "pass" ? "pass" : i.result.result === "fail" ? "fail" : "nc"}">${i.result.result === "pass" ? "Passed last check" : i.result.result === "fail" ? "Failed last check" : "Not comparable"}</span>` : "";
+  if (i.waiting) return `<div class="row waiting${sel ? " sel" : ""}"><div class="rcol">
+    <div class="meta">${tip(i.key + ":k", KIND[k] || k, KIND_TIP[k] || "")}<span>·</span>${tip(i.key + ":w", "Waiting for a recompile", `Added by you. It joins ${S.d.name}’s system, and Rubrick writes its check, when you recompile.`)}</div>
+    <button class="rbtn" data-sel="${esc(i.key)}" aria-pressed="${sel}"><span class="rname">${esc(i.label)}</span>${i.desc ? `<span class="rdesc">${esc(i.desc)}</span>` : ""}</button>
+  </div><button class="linkbtn" data-unomit="${esc(i.key)}">Remove</button></div>`;
   return `<div class="row${sel ? " sel" : ""}"><div class="rcol">
     <div class="meta">${i.needs ? `<span class="needs">Needs a look</span><span>·</span>` : ""}${tip(i.key + ":k", KIND[k] || k, KIND_TIP[k] || "")}${conf ? "<span>·</span>" + conf : ""}${votes ? "<span>·</span>" + votes : ""}${res ? "<span>·</span>" + res : ""}<span class="grow"></span>${tip(i.key + ":s", i.set_by === "you" ? "Set by you" : "Set by Rubrick", i.set_by === "you" ? "You set this. Recompiles never change it." : "Rubrick chose this from its evidence. A recompile may change it until you set it yourself.", true)}</div>
     <button class="rbtn" data-sel="${esc(i.key)}" aria-pressed="${sel}"><span class="rname">${esc(i.label)}</span>${i.desc ? `<span class="rdesc">${esc(i.desc)}</span>` : ""}</button>
@@ -467,6 +472,10 @@ function detailHTML() {
   const k = kindOf(i), isNew = i.key.startsWith("new:");
   const Q = { move: "Rubrick captured this because it clearly differs from a typical build.", part: `One of the parts where ${d.name}’s look and behavior come together.`,
     new: `${d.name} does this, and a typical build doesn’t. Rubrick hasn’t seen it before.`, omission: `Most apps like ${d.name} include this. ${d.name} doesn’t.` };
+  if (i.waiting) return `<span class="dk">${tip("d:k", KIND[k] || k, KIND_TIP[k] || "")} · Waiting for a recompile</span>
+    <h3>${esc(i.label)}</h3><p class="p">${esc(i.desc || "")}</p>
+    <div class="plain"><h4>Not in the system yet</h4><span>You added this since the last compile. Builders and checks don’t know about it until you recompile ${esc(d.name)}. That’s when Rubrick tries to write a check for it, and its comparison is drawn after that.</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${d.can_compile ? `<button class="btn pri" data-recompile ${S.job ? "disabled" : ""}>Recompile now →</button>` : ""}<button class="btn" data-unomit="${esc(i.key)}">Remove it</button></div>`;
   const v = i.verification || {}, r = i.result;
   const what = i.desc || i.evidence || "";  // what it is, under the title
   const name = S.names[i.key] ?? i.name ?? "", desc = S.descs[i.key] ?? (i.what || i.evidence || i.desc || "");
@@ -540,7 +549,7 @@ function useFonts(sp) {
 function bento() {
   const d = S.d, sp = d.specimen || {};
   const adds = d.items.filter((i) => i.section === "add" && i.state === "on").length;
-  const omits = d.items.filter((i) => i.section === "omit" && i.state === "on");
+  const omits = d.items.filter((i) => i.section === "omit" && i.state === "on" && !i.waiting);
   const name = `<div class="t-name"><h1>${esc(d.name)}</h1><p>${d.kind ? esc(d.kind[0].toUpperCase() + d.kind.slice(1)) + " · " : ""}${adds} additions · ${omits.length} omissions · ${d.principles.filter((p) => p.active).length} principles</p></div>`;
   if (!sp.source || sp.source === "none") return `<header class="hd"><div class="bento">${name}</div></header>`;
   useFonts(sp);
@@ -683,14 +692,20 @@ document.addEventListener("click", async (e) => {
     if (ds.setupfilm !== undefined) {
       S.filmJob = {}; return sideJob(S.filmJob, api("/api/setup/filming", {}), async () => { S.setup = await api("/api/setup"); });
     }
+    if (ds.unomit) { await api(`/api/products/${encodeURIComponent(S.cur)}/omission-remove`, { key: ds.unomit }); if (S.sel === ds.unomit) S.sel = null; await refresh(); return; }
     if (ds.addomit !== undefined) { $("#omitForm").reset(); return $("#omitDlg").showModal(); }
     if (ds.check !== undefined) return $("#checkDlg").showModal();
-    if (ds.recompile !== undefined) return runJob(api(`/api/products/${encodeURIComponent(S.cur)}/recompile`, {}), "Recompiling…", () => { S.flash = { kind: "ok", text: `Recompiled. ${S.cur}’s system, what builders read, and every check now reflect your switches.` }; render(); });
+    if (ds.recompile !== undefined) return runJob(api(`/api/products/${encodeURIComponent(S.cur)}/recompile`, {}), "Recompiling…", (res) => {
+      const c = res?.checks || [], ok = c.filter((x) => x.gated), no = c.filter((x) => !x.gated);
+      const q = (xs) => xs.map((x) => `“${x.label}”`).join(", ");
+      const more = (ok.length ? ` Rubrick wrote a check for ${q(ok)}, so a build that adds ${ok.length > 1 ? "them" : "it"} back fails.` : "")
+        + (no.length ? ` It couldn’t write a reliable check for ${q(no)} yet: builders are told to leave ${no.length > 1 ? "them" : "it"} out, but ${no.length > 1 ? "they aren’t" : "it isn’t"} checked.` : "");
+      S.flash = { kind: no.length ? "warn" : "ok", text: `Recompiled. ${S.cur}’s system, what builders read, and every check now reflect your changes.${more}` }; render(); });
     const post = (action, body) => api(`/api/products/${encodeURIComponent(S.cur)}/${action}`, body);
     if (ds.switch) { const i = S.d.items.find((x) => x.key === ds.switch); await post("switch", { key: ds.switch, state: i.state === "on" ? "off" : "on" }); S.sel = ds.switch; await refresh(); return; }
     if (ds.set) { await post("switch", { key: ds.set, state: ds.to }); await refresh(); return; }
     if (ds.keep) { const i = S.d.items.find((x) => x.key === ds.keep); await post("switch", { key: ds.keep, state: i.state }); await refresh(); return; }
-    if (ds.group) { const items = itemsIn(ds.group === "Additions" ? "add" : "omit"); const g = groupState(items); await post("switch", { keys: items.map((i) => i.key), state: g.st === "on" ? "off" : "on" }); await refresh(); return; }
+    if (ds.group) { const items = itemsIn(ds.group === "Additions" ? "add" : "omit"); const g = groupState(items); await post("switch", { keys: items.filter((i) => !i.waiting).map((i) => i.key), state: g.st === "on" ? "off" : "on" }); await refresh(); return; }
     if (ds.pswitch) { const items = S.d.items.filter((i) => i.principle === ds.pswitch); const g = groupState(items); await post("switch", { keys: items.map((i) => i.key), state: g.st === "on" ? "off" : "on" }); await refresh(); return; }
     if (ds.psave) { await post("principle", { id: ds.psave, title: $(`[data-ptitle="${CSS.escape(ds.psave)}"]`).value, prior: $(`[data-pprior="${CSS.escape(ds.psave)}"]`).value }); S.flash = { kind: "ok", text: "Saved. The new wording applies on the next recompile." }; await refresh(); return; }
     if (ds.job) { await post("job", { original: ds.job, value: ds.jobstate === "on" ? "STRIKE" : "" }); await refresh(); return; }
@@ -742,12 +757,11 @@ document.addEventListener("submit", (e) => {
 $("#omitDlg").addEventListener("close", () => {
   if ($("#omitDlg").returnValue !== "ok") return;
   const f = Object.fromEntries(new FormData($("#omitForm")));
-  runJob(api(`/api/products/${encodeURIComponent(S.cur)}/omission`, f), "Adding the omission…", (res) => {
+  api(`/api/products/${encodeURIComponent(S.cur)}/omission`, f).then(async (res) => {
     S.sel = res.key; S.opened = null;
-    const gated = /ACTIVE/.test(res.detector || "");
-    S.flash = { kind: gated ? "ok" : "warn", text: gated ? `Added “${f.label}”. Rubrick wrote a check for it, so a build that adds it back fails.` : `Added “${f.label}”. Builders are told to leave it out, but Rubrick couldn’t write a reliable check for it yet, so it isn’t checked.` };
-    render();
-  });
+    S.flash = { kind: "ok", text: `Added “${f.label}”. It joins ${S.cur}’s system when you recompile, and that’s when Rubrick writes its check.` };
+    await refresh();
+  }).catch((e) => { S.flash = { kind: "err", text: e.message }; render(); });
 });
 $("#checkDlg").addEventListener("close", () => {
   if ($("#checkDlg").returnValue !== "ok") return;
